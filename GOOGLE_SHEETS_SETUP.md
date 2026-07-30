@@ -12,7 +12,7 @@ Architecture overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 1. A Google Spreadsheet (shared publicly for CSV export)
 2. Apps Script attached to that sheet
-3. A sheet menu **Site → Publish website** and/or a clickable button
+3. A sheet menu **Import/Export** (**Import Picture URLs**, **Publish website**) and/or a clickable button
 4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → pushes to the destination Pages repo
 
 You need **two different GitHub tokens** (do not reuse one for both jobs):
@@ -133,14 +133,30 @@ Add:
 1. In the Apps Script editor, select function `checkPublishConfig` → **Run**
 2. Choose your Google account → **Allow** the permissions (spreadsheet + external requests)
 3. You should see an alert that `GH_PAT` is set and owner/repo look correct
+4. First run of **Import Picture URLs** also asks for Drive access — allow that too
 
 ### C4. Add the custom menu
 
 1. Close and reopen the spreadsheet (or refresh)
-2. After a few seconds a **Site** menu appears
-3. **Site → Publish website** runs the same publish function as the button
+2. After a few seconds an **Import/Export** menu appears
+3. **Import/Export → Publish website** runs the same publish function as the button
+4. **Import/Export → Import Picture URLs** fills the `image` / `Picture URLs` column from a sibling Drive folder named `Pictures`
 
 If the menu is missing: Extensions → Apps Script → run `onOpen` once, then refresh the sheet.
+
+### C5. Drive layout for Import Picture URLs
+
+Put the spreadsheet and a folder named **`Pictures`** in the same parent Drive folder:
+
+```text
+Parent folder/
+  ├─ My Site Content (spreadsheet)
+  └─ Pictures/
+        ├─ photo1.jpg
+        └─ photo2.png
+```
+
+Each image: **Share → Anyone with the link → Viewer**. Menu import appends Drive file URLs into the first empty cells of the `image` (or `Picture URLs`) column without overwriting existing values.
 
 ---
 
@@ -194,7 +210,7 @@ Also ensure:
 ## Part F — End-to-end test
 
 1. Edit a cell in the sheet → save
-2. Click **Publish website** (button or Site menu)
+2. Click **Publish website** (button or Import/Export menu)
 3. Open `https://github.com/GH_OWNER/GH_REPO/actions`
 4. Run **Build site from Google Drive + Sheets** should appear (event `repository_dispatch`)
 5. When green: check the destination website repo for a new commit and refresh the live Pages URL

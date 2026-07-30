@@ -12,7 +12,7 @@ Static website generated from:
 3. **GitHub Action in this (content) repo** — fetch → resize → write `site/`
 4. **Push generated files into a separate public website repo** — that repo is what GitHub Pages hosts
 
-**Primary publish path:** editor clicks a button (or **Site → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys.
+**Primary publish path:** editor clicks a button (or **Import/Export → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys.
 
 No runtime backend. No Google API keys for Sheet/Drive read. Public share links only.
 
@@ -96,7 +96,7 @@ Several content repos pushing into the **same** destination path will overwrite 
 
 | Trigger | When to use |
 |---------|-------------|
-| **Google Sheet button / Site menu** (primary) | After editing Sheet or Drive content — see `GOOGLE_SHEETS_SETUP.md` |
+| **Google Sheet button / Import/Export menu** (primary) | After editing Sheet or Drive content — see `GOOGLE_SHEETS_SETUP.md` |
 | `repository_dispatch` type `rebuild-site` | What Apps Script sends |
 | Manual `workflow_dispatch` | Backup from GitHub Actions UI |
 | Push to `main` touching build config/scripts | After template/code changes |

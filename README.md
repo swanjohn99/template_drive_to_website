@@ -2,7 +2,7 @@
 
 People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this content repo**, which builds static files and **pushes them into a separate public website repo** (GitHub Pages host).
 
-After Sheet/Drive updates: click **Publish website** on the sheet (or use **Site → Publish website**).
+After Sheet/Drive updates: click **Publish website** on the sheet (or use **Import/Export → Publish website**).
 
 **Setup for the sheet + button:** [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)  
 **Planners / Cursor:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
@@ -116,7 +116,7 @@ The workflow clones/pushes the destination with that secret. If the token expire
 ### 6. Publish from the spreadsheet
 
 1. Edit Sheet / Drive content as needed  
-2. Click the **Publish website** button (or **Site → Publish website**)  
+2. Click the **Publish website** button (or **Import/Export → Publish website**)  
 3. Confirm the run under the content repo **Actions** tab  
 
 Backup: Actions → **Build site from Google Drive + Sheets** → **Run workflow**.
