@@ -101,11 +101,31 @@ jobs:
             echo "DEPLOY_TOKEN secret is required to push to ${DEPLOY_REPO}"
             exit 1
           fi
+          REPO_URL="https://x-access-token:${DEPLOY_TOKEN}@github.com/${DEPLOY_REPO}.git"
           DEST_DIR="${RUNNER_TEMP}/dest-site"
           rm -rf "$DEST_DIR"
-          git clone --depth 1 --branch "$DEPLOY_BRANCH" \
-            "https://x-access-token:${DEPLOY_TOKEN}@github.com/${DEPLOY_REPO}.git" \
-            "$DEST_DIR"
+
+          # Avoid "Remote branch X not found in upstream origin" when
+          # deploy_branch is wrong, destination uses master/gh-pages, or repo is empty.
+          if git ls-remote --heads "$REPO_URL" "refs/heads/${DEPLOY_BRANCH}" | grep -q .; then
+            echo "Cloning ${DEPLOY_REPO}@${DEPLOY_BRANCH}"
+            git clone --depth 1 --branch "$DEPLOY_BRANCH" "$REPO_URL" "$DEST_DIR"
+          elif git ls-remote --heads "$REPO_URL" | grep -q .; then
+            DEFAULT_REF="$(git ls-remote --symref "$REPO_URL" HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2; exit}')"
+            echo "Branch '${DEPLOY_BRANCH}' missing on destination; cloning default '${DEFAULT_REF:-HEAD}' then creating ${DEPLOY_BRANCH}"
+            if [ -n "${DEFAULT_REF:-}" ]; then
+              git clone --depth 1 --branch "$DEFAULT_REF" "$REPO_URL" "$DEST_DIR"
+            else
+              git clone --depth 1 "$REPO_URL" "$DEST_DIR"
+            fi
+            git -C "$DEST_DIR" checkout -B "$DEPLOY_BRANCH"
+          else
+            echo "Destination has no branches yet; initializing ${DEPLOY_BRANCH}"
+            mkdir -p "$DEST_DIR"
+            git -C "$DEST_DIR" init -b "$DEPLOY_BRANCH"
+            git -C "$DEST_DIR" remote add origin "$REPO_URL"
+          fi
+
           TARGET="$DEST_DIR"
           if [ "$DEPLOY_PATH" != "." ] && [ -n "$DEPLOY_PATH" ]; then
             TARGET="$DEST_DIR/$DEPLOY_PATH"
@@ -122,5 +142,5 @@ jobs:
             echo "No destination changes"
           else
             git commit -m "chore: publish site from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
-            git push origin "HEAD:${DEPLOY_BRANCH}"
+            git push -u origin "HEAD:${DEPLOY_BRANCH}"
           fi

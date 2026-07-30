@@ -46,9 +46,18 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 ### 4. Destination website repo
 
-1. Other user’s public Pages repo (you are a **collaborator** with push to `main`)
+1. Other user’s public Pages repo (you are a **collaborator** with push to the deploy branch)
 2. Pages enabled on **that** repo
-3. Create a **PAT** and store it as Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
+3. Set `deploy_repo` / `deploy_branch` to match that repo (see branch note below)
+4. Create a **PAT** and store it as Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
+
+**`deploy_branch` must exist on the destination** (or match the name you want created). Open the website repo on GitHub and check the branch dropdown — often `main`, sometimes `master` or `gh-pages`. Put that exact name in `config.json` → `deploy_branch`.
+
+If you see:
+
+`Remote branch … not found in upstream origin`
+
+→ wrong `deploy_branch`, empty destination with no commits yet, or bad `deploy_repo`. Fix the name in config, or re-run after this template’s newer workflow (it can create the branch / handle empty repos).
 
 Without `deploy_repo` + `DEPLOY_TOKEN`, the Action only builds (and optionally commits) `site/` locally.
 

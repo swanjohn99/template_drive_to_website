@@ -163,7 +163,8 @@ Each Drive file must be **Anyone with the link → Viewer**.
 | `image_quality`   | JPEG quality (default 82) |
 | `output_dir`      | Local build folder (default `site`) |
 | `deploy_repo`     | Destination `owner/repo` (empty = skip remote push) |
-| `deploy_branch`   | Branch on destination (default `main`) |
+| `deploy_branch`   | Branch on destination (default `main`). **Must match a real branch name** on that repo (`main` / `master` / `gh-pages`), or the Action will create it when possible |
+
 | `deploy_path`     | Path inside destination to write files (default `.` = repo root) |
 | `commit_site_locally` | If `true`, also commit `site/` back to this content repo |
 
@@ -191,10 +192,22 @@ Env / Actions vars win over `config.json` when set.
 
 1. Public repo that GitHub Pages serves (often `username.github.io`)
 2. Pages enabled on that repo (branch/`deploy_path` as configured)
-3. Content-repo operator added as collaborator with push to deploy branch
-4. Content repo secret `DEPLOY_TOKEN` = Personal Access Token with scopes below:
+3. Confirm the **exact** default/deploy branch name on GitHub (`main` vs `master` vs `gh-pages`) and set `deploy_branch` to match
+4. Content-repo operator added as collaborator with push to deploy branch
+5. Content repo secret `DEPLOY_TOKEN` = Personal Access Token with scopes below:
    - Fine-grained (preferred): destination repo only → **Contents: Read and write**, **Metadata: Read-only**
    - Classic: `public_repo` (public destination) or `repo` (private destination)
+
+#### Troubleshooting: `Remote branch … not found in upstream origin`
+
+Means `git clone --branch <deploy_branch>` could not find that ref on the destination.
+
+| Check | Fix |
+|-------|-----|
+| Branch name typo / mismatch | Set `deploy_branch` (or `DEPLOY_BRANCH` var) to the destination’s real branch |
+| Empty new website repo | Make an initial commit on the destination, or rely on the workflow’s empty-repo init path |
+| Wrong `deploy_repo` | Use `owner/repo` of the Pages host, not the content repo |
+| Token can’t see the repo | PAT account must be collaborator; fine-grained token must include that repository |
 
 ## Code map
 
