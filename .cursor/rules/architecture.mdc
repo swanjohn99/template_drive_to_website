@@ -1,0 +1,17 @@
+---
+description: Read architecture and spreadsheet contract before planning
+globs:
+alwaysApply: true
+---
+
+Before planning or editing this repo (or a fork/template copy), read `ARCHITECTURE.md`.
+
+It defines:
+
+- Drive + Sheet → GitHub Action → static `site/` data flow
+- Google Spreadsheet column schema and sharing rules
+- `config.json` / env overrides
+- What is generated vs source of truth
+- Safe change recipes
+
+Do not invent alternate sheet schemas or private Google API auth unless the user asks.

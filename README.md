@@ -4,6 +4,8 @@ People upload pictures to a **public Google Drive** folder/files. Editors put ti
 
 Re-run the Action whenever Sheet or Drive content changes (or wait for the hourly schedule).
 
+**Planners / Cursor:** read [`ARCHITECTURE.md`](ARCHITECTURE.md) for system architecture and the Google Spreadsheet schema contract.
+
 ## Setup
 
 ### 1. Google Spreadsheet
