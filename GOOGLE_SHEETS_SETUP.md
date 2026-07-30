@@ -58,13 +58,13 @@ Publish-from-sheet usually sends rows inline — you do **not** need `spreadshee
 
 ### A4. Drive pictures
 
-Files: **Anyone with the link → Viewer**. Put id/URL in `image`. Optional: sibling folder **`Pictures`** for **Import Picture URLs**.
+Files: **Anyone with the link → Viewer**. Put id/URL in `image`. Optional: sibling folder **`Pictures`** for **Import Picture URLs** (writes into the **`your website content`** tab, same as Publish).
 
 ---
 
 ## Part B — Owner fine-grained PAT (`GH_PAT`)
 
-Created by the **owner** of `owner.github.io` (not a separate content-repo token).
+Created by the **owner** of `owner.github.io` (unrelated to who owns the public template).
 
 1. https://github.com/settings/personal-access-tokens → **Fine-grained** → Generate
 2. **Resource owner**: the hosting repo owner

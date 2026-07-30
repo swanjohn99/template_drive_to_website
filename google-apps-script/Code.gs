@@ -40,12 +40,23 @@ function onOpen() {
 
 /**
  * Import image file URLs from a sibling Drive folder named "Pictures"
- * into the Picture URLs / image column (append only; no overwrite).
+ * into the Picture URLs / image column on the content tab (append only).
  */
 function populatePictureUrls() {
   var ui = SpreadsheetApp.getUi();
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = spreadsheet.getActiveSheet();
+  var props = PropertiesService.getScriptProperties();
+  var sheetName = props.getProperty('CONTENT_SHEET_NAME') || CONTENT_SHEET_NAME;
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    ui.alert(
+      'Sheet tab not found',
+      'Create a tab named "' + sheetName + '" (same tab Publish uses).\n' +
+        'Or set CONTENT_SHEET_NAME in Script properties.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
 
   var headers = sheet
     .getRange(1, 1, 1, sheet.getLastColumn())

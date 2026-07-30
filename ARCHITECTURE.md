@@ -163,7 +163,7 @@ Each Drive file: **Anyone with the link → Viewer**.
 | `scripts/check_host_repo.py` | CI: enforce `owner.github.io` + Pages `main` `/` |
 | `.github/workflows/build.yml` | Check → build → publish `site/` to root → commit on `main` |
 | `google-apps-script/Code.gs` | Sheet button/menu (copy into Apps Script) |
-| `index.html`, `assets/`, `images/`, `data.json` | **Published** Pages files on `main` root |
+| `index.html`, `assets/`, `images/`, `data.json` | **Published** Pages files at repo root (written by CI; not in the bare template) |
 | `site/` | Local/CI build output (gitignored) |
 
 ## Invariants for planners
