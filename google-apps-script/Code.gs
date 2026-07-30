@@ -41,15 +41,27 @@ function publishWebsite() {
     return;
   }
 
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
+  var clientPayload = {
+    source: 'google-sheets',
+    spreadsheet_id: ss.getId(),
+    sheet_gid: String(sheet.getSheetId()),
+    triggered_by: Session.getActiveUser().getEmail() || 'unknown',
+    triggered_at: new Date().toISOString()
+  };
+
+  // Inline CSV avoids configuring spreadsheet_id in the content repo.
+  // GitHub dispatch body limit is ~64 KB; fall back to id+gid fetch when too large.
+  var csvB64 = sheetDataToCsvBase64(sheet);
+  if (csvB64) {
+    clientPayload.sheet_csv_b64 = csvB64;
+  }
+
   var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/dispatches';
   var payload = {
     event_type: eventType,
-    client_payload: {
-      source: 'google-sheets',
-      spreadsheet_id: SpreadsheetApp.getActiveSpreadsheet().getId(),
-      triggered_by: Session.getActiveUser().getEmail() || 'unknown',
-      triggered_at: new Date().toISOString()
-    }
+    client_payload: clientPayload
   };
 
   var response = UrlFetchApp.fetch(url, {
@@ -81,6 +93,36 @@ function publishWebsite() {
     response.getContentText().substring(0, 1500),
     ui.ButtonSet.OK
   );
+}
+
+/**
+ * Serialize the active sheet as base64 CSV, or null if empty / too large for dispatch.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @return {string|null}
+ */
+function sheetDataToCsvBase64(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (!data.length) {
+    return null;
+  }
+
+  var lines = data.map(function (row) {
+    return row.map(function (cell) {
+      var s = cell == null ? '' : String(cell);
+      if (/[",\n\r]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }).join(',');
+  });
+
+  var csv = lines.join('\n');
+  var bytes = Utilities.newBlob(csv).getBytes();
+  // Leave headroom for JSON wrapper + other client_payload fields (~64 KB dispatch limit).
+  if (bytes.length > 45000) {
+    return null;
+  }
+  return Utilities.base64Encode(bytes);
 }
 
 /**

@@ -59,11 +59,9 @@ Rules:
 
 1. **Share** (top right)
 2. **General access** → **Anyone with the link** → **Viewer**
-3. Copy the link; note the id:
+3. Copy the link; the **Publish website** button sends this sheet's id to GitHub automatically — you do **not** need `spreadsheet_id` in `config.json` when publishing from the sheet.
 
-`https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
-
-Put `SPREADSHEET_ID` into the content repo `config.json` → `spreadsheet_id` (or Actions variable `SPREADSHEET_ID`).
+   Optional fallback for manual Action runs: set `spreadsheet_id` in `config.json` or Actions variable `SPREADSHEET_ID`.
 
 ### A5. Confirm CSV export works
 
@@ -184,10 +182,11 @@ on:
 
 Also ensure:
 
-1. `config.json` has the real `spreadsheet_id`
-2. `deploy_repo` / `deploy_branch` point at the website host
-3. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W on the **destination** repo)
-4. Actions are enabled on the content repo
+1. `deploy_repo` / `deploy_branch` point at the website host
+2. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W on the **destination** repo)
+3. Actions are enabled on the content repo
+
+`spreadsheet_id` in `config.json` is optional when editors publish from the sheet (Apps Script sends sheet id + row CSV in the dispatch payload). Keep it only for manual `workflow_dispatch` / push builds without the button.
 
 ---
 

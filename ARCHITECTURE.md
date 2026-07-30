@@ -112,7 +112,8 @@ After Sheet or Drive content changes, click **Publish website** in the sheet (do
 
   `https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={sheet_gid}`
 
-- `spreadsheet_id` / `sheet_gid` come from `config.json` or Actions vars/env
+- `spreadsheet_id` / `sheet_gid` come from the Sheet **Publish** dispatch payload (`client_payload`), or `config.json` / Actions vars/env as fallback
+- Publish also sends inline row CSV when the sheet is small enough (~45 KB); otherwise the Action fetches public CSV export by id
 - If export returns HTML, sharing is wrong (not public)
 
 ### Header row (required shape)
