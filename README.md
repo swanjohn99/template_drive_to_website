@@ -1,6 +1,8 @@
 # Drive + Sheets → static website
 
-People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this repo**, which builds static files and **deploys them with GitHub Pages** (same repo).
+**This repo (a copy of the template) is the website host.** There is no second “destination” repo. Sheet/Drive content builds here; GitHub Pages serves from here.
+
+People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this template copy**, which builds static files and **deploys GitHub Pages on this same repo**.
 
 After Sheet/Drive updates: click **Publish website** on the sheet (or use **Import/Export → Publish website**).
 
@@ -8,6 +10,13 @@ After Sheet/Drive updates: click **Publish website** on the sheet (or use **Impo
 **Planners / Cursor:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ## Setup
+
+### 0. Use the template copy as the host
+
+1. Create a repo from this template (or fork/copy it)
+2. That copy **is** the public website — enable Pages on **it**
+3. For a root URL (`https://username.github.io/`), name the copy `username.github.io` (or the org equivalent)
+4. Point Apps Script `GH_REPO` at **this copy’s** URL — not a separate site repo
 
 ### 1. Google Spreadsheet + Publish button
 
@@ -27,9 +36,9 @@ Header row:
 
 Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `image` column.
 
-### 3. Configure this repo
+### 3. Configure this template copy
 
-`config.json`:
+`config.json` (in the website-host repo — this copy):
 
 ```json
 {
@@ -45,15 +54,16 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 `spreadsheet_id` can stay empty when you publish from the sheet — Apps Script sends the id. Set it (or Actions var `SPREADSHEET_ID`) only for manual / push rebuilds without the sheet button.
 
-### 4. GitHub Pages + contributor Actions access
+### 4. GitHub Pages on this template copy + contributor Actions access
 
-1. For a **root** site URL (`https://username.github.io/`), name this repo `username.github.io` (or the org equivalent)
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
-3. **Settings → Collaborators**: add the contributor with **Write** (required so they can start Actions)
-4. **Settings → Actions → General**: Actions enabled; workflow permissions **Read and write**
-5. No second token — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact
+1. This template copy **is** the Pages host (do not push built files to another repo)
+2. For a **root** site URL (`https://username.github.io/`), name **this** repo `username.github.io` (or the org equivalent)
+3. **Settings → Pages → Build and deployment → Source: GitHub Actions**
+4. **Settings → Collaborators**: add the contributor with **Write** (required so they can start Actions)
+5. **Settings → Actions → General**: Actions enabled; workflow permissions **Read and write**
+6. No second token / no destination repo — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact on **this** repo
 
-Contributor check: they can open this repo’s **Actions** tab and **Run workflow**.
+Contributor check: they can open **this** repo’s **Actions** tab and **Run workflow**.
 
 ### 5. GitHub token for the sheet (`GH_PAT`)
 
@@ -69,7 +79,7 @@ In Apps Script Script properties set:
 | Property | Meaning |
 |----------|---------|
 | `GH_PAT` | Contributor’s token (usual) |
-| `GH_REPO` | Full URL, e.g. `https://github.com/owner/username.github.io` |
+| `GH_REPO` | Full URL of **this template copy** (the website host), e.g. `https://github.com/owner/username.github.io` |
 
 Full steps: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) (Part 0 + Part B).
 
@@ -98,7 +108,7 @@ Demo mode if sheet id is unset/`REPLACE_*`. Open `site/index.html`. `site/` is g
 ```text
 Google Drive + Google Sheet (button / Apps Script)
         → repository_dispatch (rebuild-site)
-        → this repo Action (build site/)
+        → template-copy Action (build site/)
         → upload Pages artifact → deploy-pages
-        → GitHub Pages (this repo)
+        → GitHub Pages on the template copy (website host)
 ```

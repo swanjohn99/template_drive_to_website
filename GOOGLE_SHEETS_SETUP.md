@@ -1,6 +1,6 @@
 # Google Spreadsheet + Apps Script setup
 
-Step-by-step: put content in a public Google Sheet, add a **Publish website** button, and have that button trigger the GitHub Action that builds static files and deploys GitHub Pages on **this same repo**.
+Step-by-step: put content in a public Google Sheet, add a **Publish website** button, and have that button trigger the GitHub Action that builds and deploys GitHub Pages on **the template copy** — that copy **is** the website host (no second destination repo).
 
 Copy-paste script: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
 
@@ -13,21 +13,22 @@ Architecture overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 1. A Google Spreadsheet (shared publicly for CSV export)
 2. Apps Script attached to that sheet
 3. A sheet menu **Import/Export** (**Import Picture URLs**, **Publish website**) and/or a clickable button
-4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → deploys GitHub Pages on this repo
+4. A **template-copy repo that is the website host** (Pages on that same repo)
+5. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → deploys GitHub Pages **on the template copy**
 
-You need **one** GitHub token (usually created on the **contributor** account that can start Actions):
+You need **one** GitHub token (usually created on the **contributor** account that can start Actions on the template copy):
 
 | Token | Where stored | Purpose |
 |-------|--------------|---------|
-| **`GH_PAT`** | Apps Script **Script properties** | Lets the sheet call GitHub to **start** the Action on **this** repo |
+| **`GH_PAT`** | Apps Script **Script properties** | Lets the sheet call GitHub to **start** the Action on the **template copy / website host** |
 
-Pages deploy uses the workflow `GITHUB_TOKEN` (`pages: write` + `id-token: write`). No second token.
+Pages deploy uses the workflow `GITHUB_TOKEN` (`pages: write` + `id-token: write`). No second token. No push to another repo.
 
 ---
 
-## Part 0 — Contributor can run Actions on this repo (required)
+## Part 0 — Contributor can run Actions on the website host (required)
 
-The person who publishes from the sheet is usually a **contributor**, not the GitHub account in the repo URL. The **repo owner** must grant them access **before** creating `GH_PAT`.
+The website host **is** this template copy. The person who publishes from the sheet is usually a **contributor**, not the GitHub account in the repo URL. The **repo owner** must grant them access on **this** repo **before** creating `GH_PAT`.
 
 ### Owner checklist
 
@@ -165,7 +166,7 @@ Add:
 | Property | Example value | Notes |
 |----------|---------------|-------|
 | `GH_PAT` | `github_pat_…` | Token from Part B — usually the **contributor** account |
-| `GH_REPO` | `https://github.com/swanjohn99/username.github.io` | Full repo URL (also accepts `owner/repo`). Do **not** put the PAT author’s username here unless that is the URL owner |
+| `GH_REPO` | `https://github.com/swanjohn99/username.github.io` | Full URL of the **template copy / website host** (also accepts `owner/repo`). Not a separate destination repo; not the PAT author’s profile unless that is the host |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
 
 Legacy: if `GH_REPO` is only the repo name, also set `GH_REPO_OWNER` (or `GH_OWNER`) to the URL user/org.
@@ -229,9 +230,9 @@ Each image: **Share → Anyone with the link → Viewer**. Menu import appends D
 
 ---
 
-## Part E — This repo must accept the event and host Pages
+## Part E — Template copy (website host) must accept the event and host Pages
 
-Confirm `.github/workflows/build.yml` includes:
+The repo in `GH_REPO` **is** the website host (the template copy). Confirm `.github/workflows/build.yml` includes:
 
 ```yaml
 on:

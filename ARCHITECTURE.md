@@ -5,27 +5,31 @@ Source of truth for data flow, spreadsheet schema, config, build output, and **w
 
 ## Purpose
 
+**The template copy is the website host.** Build scripts, Actions, and GitHub Pages all live in that one repository. Do not assume a separate “content” repo and a second “destination Pages” repo unless the user explicitly asks for that again.
+
 Static website generated from:
 
 1. **Google Spreadsheet** (public) — page copy / metadata + **Publish** button (Apps Script)
 2. **Google Drive files** (public) — photos referenced by the sheet
-3. **GitHub Action in this repo** — fetch → resize → write `site/`
-4. **GitHub Pages on this same repo** — Action uploads `site/` as a Pages artifact and deploys it
+3. **GitHub Action in the template copy** — fetch → resize → write `site/`
+4. **GitHub Pages on that same template copy** — Action uploads `site/` as a Pages artifact and deploys it
 
-**Primary publish path:** editor clicks a button (or **Import/Export → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys Pages.
+**Primary publish path:** editor clicks a button (or **Import/Export → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys Pages **on the template copy**.
 
 No runtime backend. No Google API keys for Sheet/Drive read. Public share links only.
 
 Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · script source: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
 
-## One-repo model
+## One-repo model (template copy = website host)
 
-Build and host live in **one** repository. For a root user/org URL (`https://username.github.io/`), name the repo `username.github.io` (or the org equivalent) and enable Pages with source **GitHub Actions**.
+Build and host live in **one** repository: the copy created from this template. For a root user/org URL (`https://username.github.io/`), name that copy `username.github.io` (or the org equivalent) and enable Pages with source **GitHub Actions**.
 
 | Piece | Role |
 |------|------|
-| **This repo** | Sheet/Drive wiring, builder scripts, Action that builds `site/` and deploys Pages |
-| **GitHub Pages** | Serves the uploaded `site/` artifact at the repo’s Pages URL (root for `*.github.io` repos) |
+| **Template copy (this repo)** | Website host: Sheet/Drive wiring, builder, Action, Pages |
+| **GitHub Pages** | Serves the uploaded `site/` artifact at this repo’s Pages URL (root for `*.github.io` repos) |
+
+There is **no** second destination repo to push into.
 
 ```text
 Editors / uploaders
@@ -35,9 +39,9 @@ Editors / uploaders
            │  click "Publish website"
            ▼
   Apps Script  →  GitHub API repository_dispatch (event: rebuild-site)
-           │         (Script property GH_PAT — Actions write on THIS repo)
+           │         (Script property GH_PAT — Actions on the TEMPLATE COPY)
            ▼
-  This repo  GitHub Action (.github/workflows/build.yml)
+  Template copy  GitHub Action (.github/workflows/build.yml)
            │
            ▼
   scripts/build.py
@@ -50,7 +54,7 @@ Editors / uploaders
   upload-pages-artifact (path: site) → deploy-pages
            │         (GITHUB_TOKEN — pages: write + id-token: write)
            ▼
-  GitHub Pages on THIS repo (public site)
+  GitHub Pages on the TEMPLATE COPY (public website host)
 ```
 
 ### One PAT (`GH_PAT` only)
@@ -172,11 +176,12 @@ Env / Actions vars win over `config.json` when set.
 
 ### Pages hosting checklist
 
-1. Repo named for root URL if needed: `username.github.io` (or org equivalent)
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
-3. Contributor is a **Write** collaborator and can open **Actions** / Run workflow
-4. First successful workflow run creates the `github-pages` environment and publishes
-5. Live URL: `https://username.github.io/` for a user/org site repo; project repos use `https://username.github.io/repo-name/`
+1. **This template copy is the website host** — enable Pages here; do not push `site/` to another repo
+2. Repo named for root URL if needed: `username.github.io` (or org equivalent)
+3. **Settings → Pages → Build and deployment → Source: GitHub Actions**
+4. Contributor is a **Write** collaborator and can open **Actions** / Run workflow on this copy
+5. First successful workflow run creates the `github-pages` environment and publishes
+6. Live URL: `https://username.github.io/` for a user/org site repo; project repos use `https://username.github.io/repo-name/`
 
 ## Code map
 
@@ -205,7 +210,7 @@ Env / Actions vars win over `config.json` when set.
 4. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term. Do not commit `site/`.
 5. After content changes, publish from the sheet — that rebuild **and** redeploys GitHub Pages on this repo.
 6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` (and no env/dispatch id) → `sample/content.csv` placeholders; publish-from-sheet supplies the id in the payload.
-7. **Live hosting is this repo’s GitHub Pages** (Actions artifact), not a second destination repo.
+7. **Live hosting is the template copy’s GitHub Pages** — that copy **is** the website host, not a separate destination repo.
 8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions; usually a **contributor’s** token who has **Write** collaborator access). Pair with `GH_REPO` as the full GitHub URL. Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
 
 ## Typical change recipes

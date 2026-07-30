@@ -8,11 +8,11 @@ Before planning or editing this repo (or a fork/template copy), read `ARCHITECTU
 
 It defines:
 
-- **Primary publish:** Google Sheet Apps Script button/menu → `repository_dispatch` (`rebuild-site`) → build `site/` → deploy GitHub Pages on **this same repo**
+- **Template copy = website host:** the repo created from this template is the public Pages host (build + deploy in the same repo). No second destination repo unless the user asks.
+- **Primary publish:** Google Sheet Apps Script button/menu → `repository_dispatch` (`rebuild-site`) → build `site/` → deploy GitHub Pages on **that template copy**
 - Drive + Sheet → GitHub Action → static `site/` data flow
-- **One-repo hosting:** build + Pages artifact deploy in this repo (root URL via `username.github.io`)
-- **One PAT:** `GH_PAT` in Apps Script (usually a **Write** collaborator / contributor’s token) + `GH_REPO` as the full GitHub URL; Pages deploy uses `GITHUB_TOKEN` (`pages` + `id-token`)
-- Contributor must be able to run Actions on this repo (Write collaborator + Actions enabled) before creating `GH_PAT`
+- **One PAT:** `GH_PAT` in Apps Script (usually a **Write** collaborator / contributor’s token) + `GH_REPO` as the full URL of the template copy / website host; Pages deploy uses `GITHUB_TOKEN` (`pages` + `id-token`)
+- Contributor must be able to run Actions on the template copy (Write collaborator + Actions enabled) before creating `GH_PAT`
 - Google Spreadsheet column schema and sharing rules
 - `config.json` / env / secrets / **dispatch payload** overrides (`spreadsheet_id` optional when publishing from the sheet)
 - What is generated vs source of truth (`site/` gitignored)

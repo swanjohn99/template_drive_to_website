@@ -5,7 +5,8 @@
  * Script properties required:
  *   GH_PAT          – PAT that can start Actions on this repo (usually contributor account;
  *                     that account must be a Write collaborator — see GOOGLE_SHEETS_SETUP.md Part 0)
- *   GH_REPO         – full repo URL, e.g. https://github.com/owner/username.github.io
+ *   GH_REPO         – full URL of the template copy / website host
+ *                     e.g. https://github.com/owner/username.github.io
  *                     (also accepts owner/repo)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
  *
