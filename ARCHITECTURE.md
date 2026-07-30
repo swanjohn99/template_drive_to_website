@@ -62,10 +62,12 @@ Editors / uploaders
 | Why not `GITHUB_TOKEN` | Scoped only to the repo running the workflow; no write access to other repos |
 | Who creates it | An account that is already a **collaborator with write** on the destination |
 | Where it lives | Content repo → Settings → Secrets → Actions → secret name `DEPLOY_TOKEN` |
-| Recommended type | Fine-grained PAT, single destination repo, **Contents: Read and write** |
+| Recommended type | Fine-grained PAT, single destination repo |
+| Permissions (fine-grained) | **Contents: Read and write**; **Metadata: Read-only** (auto). Nothing else |
+| Permissions (classic) | Public destination → `public_repo` only. Private → `repo` only. Prefer fine-grained |
 | Security | Never commit the token; rotate if leaked or expired |
 
-Human-oriented steps: `README.md` § “What is a PAT?”.
+Human-oriented steps + full scope tables: `README.md` § “What is a PAT?”.
 
 ### Multi-site warning
 
@@ -169,7 +171,7 @@ Each Drive file must be **Anyone with the link → Viewer**.
 
 | Name | Kind | Maps to |
 |------|------|---------|
-| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | Personal Access Token (PAT) for a collaborator; Contents read/write on destination |
+| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | PAT: fine-grained Contents R/W (+ Metadata R) on destination; or classic `public_repo` / `repo` |
 | `DEPLOY_REPO` | Var/secret optional override | `deploy_repo` |
 | `DEPLOY_BRANCH` | Var optional | `deploy_branch` |
 | `DEPLOY_PATH` | Var optional | `deploy_path` |
@@ -190,7 +192,9 @@ Env / Actions vars win over `config.json` when set.
 1. Public repo that GitHub Pages serves (often `username.github.io`)
 2. Pages enabled on that repo (branch/`deploy_path` as configured)
 3. Content-repo operator added as collaborator with push to deploy branch
-4. Content repo secret `DEPLOY_TOKEN` = their Personal Access Token (fine-grained, Contents: Read and write on destination)
+4. Content repo secret `DEPLOY_TOKEN` = Personal Access Token with scopes below:
+   - Fine-grained (preferred): destination repo only → **Contents: Read and write**, **Metadata: Read-only**
+   - Classic: `public_repo` (public destination) or `repo` (private destination)
 
 ## Code map
 

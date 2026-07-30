@@ -70,11 +70,36 @@ Why it’s needed here:
 1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**  
    Direct link: https://github.com/settings/personal-access-tokens
 2. **Resource owner**: your user (the collaborator on the website repo)
-3. **Repository access**: Only select the **destination website repo**
-4. **Permissions** → Repository permissions → **Contents: Read and write** (needed to push files)
+3. **Repository access**: Only select the **destination website repo** (not All repositories)
+4. **Permissions** — set only what is listed below, leave everything else **No access**
 5. Generate, copy the token once (starts with `github_pat_…`)
 
-Classic tokens also work (`repo` scope) but are broader; fine-grained is safer.
+##### Fine-grained permissions (scopes)
+
+| Permission | Access | Required? | Why |
+|------------|--------|-----------|-----|
+| **Contents** | **Read and write** | **Yes** | Clone the destination and `git push` built files |
+| **Metadata** | **Read-only** | Yes (GitHub usually adds this automatically) | Resolve the repository |
+
+Do **not** grant Administration, Actions, Secrets, Workflows, or other permissions. This template only needs to push static files.
+
+#### Classic PAT (alternative)
+
+1. **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**  
+   Direct link: https://github.com/settings/tokens
+2. Enable **only** the scope(s) below — nothing else
+3. Generate and copy once (starts with `ghp_…`)
+
+##### Classic scopes
+
+| Destination repo visibility | Scope to enable | Notes |
+|-----------------------------|-----------------|-------|
+| **Public** (typical Pages site) | `public_repo` | Enough to push to public repos |
+| **Private** | `repo` | Full repo scope; broader — prefer fine-grained instead |
+
+Do **not** enable `workflow`, `admin:org`, `delete_repo`, or other unrelated classic scopes.
+
+Fine-grained is safer because you lock the token to **one** destination repo. Classic `repo` / `public_repo` can reach every matching repo your account can access.
 
 #### Store it as `DEPLOY_TOKEN`
 
