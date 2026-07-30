@@ -77,7 +77,7 @@ Editors / uploaders
 | Who creates it | An account that is already a **collaborator with write** on the destination |
 | Where it lives | Content repo → Settings → Secrets → Actions → secret name `DEPLOY_TOKEN` |
 | Recommended type | Fine-grained PAT, single destination repo |
-| Permissions (fine-grained) | **Contents: Read and write**; **Metadata: Read-only** (auto). Nothing else |
+| Permissions (fine-grained) | **Contents: Read and write**; **Pages: Read and write** (recommended); **Metadata: Read-only** (auto). Nothing else |
 | Permissions (classic) | Public destination → `public_repo` only. Private → `repo` only. Prefer fine-grained |
 | Security | Never commit the token; rotate if leaked or expired |
 
@@ -188,7 +188,7 @@ Each Drive file must be **Anyone with the link → Viewer**.
 
 | Name | Kind | Maps to |
 |------|------|---------|
-| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | PAT: fine-grained Contents R/W (+ Metadata R) on destination; or classic `public_repo` / `repo` |
+| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | PAT: fine-grained Contents R/W + Pages R/W recommended (+ Metadata R) on destination; or classic `public_repo` / `repo` |
 | `DEPLOY_REPO` | Var/secret optional override | `deploy_repo` |
 | `DEPLOY_BRANCH` | Var optional | `deploy_branch` |
 | `DEPLOY_PATH` | Var optional | `deploy_path` |
