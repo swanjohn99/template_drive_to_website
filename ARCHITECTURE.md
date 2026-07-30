@@ -62,7 +62,7 @@ Editors / uploaders
 | Token | Stored in | Repo it targets | Fine-grained permission |
 |-------|-----------|-----------------|-------------------------|
 | **Dispatch** (`GH_PAT`) | Apps Script **Script properties** | **Content** repo | **Actions: Read and write** (+ Metadata R) |
-| **Deploy** (`DEPLOY_TOKEN`) | Content repo Actions **secret** | **Destination** website repo | **Contents: Read and write** (+ Metadata R) |
+| **Deploy** (`DEPLOY_TOKEN`) | Content repo Actions **secret** | **Destination** website repo | **Contents: Read and write** (+ **Pages: Read and write** recommended; Metadata R) |
 
 **Default `GITHUB_TOKEN` cannot push to another repo.** Deploy needs secret `DEPLOY_TOKEN`.
 
@@ -206,19 +206,24 @@ Env / Actions vars win over `config.json` when set.
 
 ### Destination website repo checklist
 
-1. Public repo that GitHub Pages serves (often `username.github.io`)
-2. Pages enabled on that repo (branch/`deploy_path` as configured)
-3. Content-repo operator added as collaborator with push to deploy branch
-4. Content repo secret `DEPLOY_TOKEN` = Personal Access Token with scopes below:
-   - Fine-grained (preferred): destination repo only → **Contents: Read and write**, **Metadata: Read-only**
+1. Public repo that GitHub Pages serves
+2. **Naming for apex URL:** destination must be named exactly `{owner}.github.io` (user or org). Any other name → project URL `https://{owner}.github.io/{repo}/`
+3. Pages source: **Deploy from a branch** → `deploy_branch` (default `main`) + folder `/` when `deploy_path` is `.` (only `/` or `/docs` are valid)
+4. Content-repo operator added as collaborator with push to deploy branch
+5. Content repo secret `DEPLOY_TOKEN` = Personal Access Token with scopes below:
+   - Fine-grained (preferred): destination repo only → **Contents: Read and write**, **Pages: Read and write** (recommended so the Action can enable/fix Pages), **Metadata: Read-only**
    - Classic: `public_repo` (public destination) or `repo` (private destination)
+6. After push, workflow runs `scripts/ensure_pages.py` to create/update Pages config when the token allows it
+
+**Template copies do not inherit** Actions secrets, Pages settings, or collaborators. Each new content repo needs its own `DEPLOY_TOKEN` + destination host.
 
 ## Code map
 
 | Path | Role |
 |------|------|
 | `scripts/build.py` | Builder only: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
-| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → optional local `site/` commit → push to destination |
+| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → optional local `site/` commit → push to destination → ensure Pages |
+| `scripts/ensure_pages.py` | After deploy: enable/fix destination Pages (`deploy_branch` + `/` or `/docs`); print naming/URL notes |
 | `google-apps-script/Code.gs` | Sheet button/menu script (copy into Apps Script project) |
 | `GOOGLE_SHEETS_SETUP.md` | Step-by-step Sheet + Apps Script + button + PAT instructions |
 | `config.json` | Sheet + brand + **deploy_repo / branch / path** |

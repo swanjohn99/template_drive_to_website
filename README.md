@@ -47,13 +47,46 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 }
 ```
 
-### 4. Destination website repo
+### 4. Destination website repo (GitHub Pages host)
 
-1. Other user’s public Pages repo (you are a **collaborator** with push to `main`)
-2. Pages enabled on **that** repo
-3. Create a **PAT** and store it as Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
+This content/template repo is **not** the live site. Create (or reuse) a **separate public** destination repo that Pages serves.
+
+#### Naming (required for the URL you want)
+
+| Goal | Destination repo name | Live URL |
+|------|------------------------|----------|
+| Apex / user site | Exactly `{username}.github.io` | `https://{username}.github.io/` |
+| Apex / org site | Exactly `{org}.github.io` | `https://{org}.github.io/` |
+| Project site | Any other name | `https://{owner}.github.io/{repo}/` |
+
+The `.github.io` name must match the **owner** (user or org). Wrong name → not served at the apex URL (GitHub treats it as a project site).
+
+#### Pages source (this template’s default)
+
+| Setting | Value |
+|---------|--------|
+| Source | **Deploy from a branch** |
+| Branch | `main` (must match `deploy_branch`) |
+| Folder | `/` (repo root) — must match `deploy_path: "."` |
+
+Only `/` or `/docs` are valid Pages folders. Keep `deploy_path` as `.` (root) or `docs`.
+
+#### Checklist
+
+1. Public destination repo named as above
+2. You are a **collaborator** with push to `main`
+3. Create a **PAT** → Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
+4. Set `deploy_repo` / `deploy_branch: "main"` / `deploy_path: "."` in `config.json`
+
+After each deploy, the Action runs `scripts/ensure_pages.py` to enable or fix Pages (`main` + `/`) when the PAT has **Pages** write access. If that permission is missing, enable Pages manually under destination **Settings → Pages**.
 
 Without `deploy_repo` + `DEPLOY_TOKEN`, the Action only builds (and optionally commits) `site/` locally.
+
+#### Publishing this repo as a GitHub template
+
+1. Make the content repo **public**
+2. **Settings → General → Template repository** → check
+3. Remind users: template copies do **not** copy secrets, Pages settings, or collaborators — they still create a destination Pages repo + `DEPLOY_TOKEN`
 
 ### 5. What is a PAT?
 
@@ -82,9 +115,10 @@ Why it’s needed here:
 | Permission | Access | Required? | Why |
 |------------|--------|-----------|-----|
 | **Contents** | **Read and write** | **Yes** | Clone the destination and `git push` built files |
+| **Pages** | **Read and write** | **Recommended** | Action can enable/fix Pages (`main` / `/`) on the destination |
 | **Metadata** | **Read-only** | Yes (GitHub usually adds this automatically) | Resolve the repository |
 
-Do **not** grant Administration, Actions, Secrets, Workflows, or other permissions. This template only needs to push static files.
+Do **not** grant Administration, Actions, Secrets, Workflows, or other permissions. Without **Pages**, deploys still push files; someone must turn on Pages once in the destination UI.
 
 #### Classic PAT (alternative)
 

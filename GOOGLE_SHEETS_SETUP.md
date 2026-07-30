@@ -201,10 +201,12 @@ on:
 Also ensure:
 
 1. `config.json` has the real `spreadsheet_id`
-2. `deploy_repo` / `deploy_branch` point at the website host
-3. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W on the **destination** repo)
-4. Actions are enabled on the content repo
+2. `deploy_repo` / `deploy_branch` / `deploy_path` point at the website host (`main` + `.` for root Pages)
+3. Destination repo naming: `{owner}.github.io` for apex URL (see README § Destination website repo)
+4. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W + recommended Pages R/W on the **destination** repo)
+5. Actions are enabled on the content repo
 
+After a successful push, the workflow runs `scripts/ensure_pages.py` to enable Pages from `deploy_branch` + `/` (or `/docs`) when the token allows it.
 ---
 
 ## Part F — End-to-end test
@@ -229,6 +231,8 @@ Also ensure:
 | Action runs but site empty / old | Sheet not public / wrong spreadsheet_id | Part A4–A5; check `config.json` |
 | Action fails on push | `DEPLOY_TOKEN` / `deploy_branch` | See README PAT section + destination `main` branch |
 | `Remote branch … not found` | Destination branch name mismatch | Set `deploy_branch` to the real branch on the website repo |
+| Site files pushed but URL 404 | Pages not enabled or wrong source | Destination → Settings → Pages → branch `main`, folder `/`; or grant PAT **Pages: Read and write** so `ensure_pages.py` can fix it |
+| Apex URL not working | Destination not named `{owner}.github.io` | Rename destination repo to match owner; otherwise use project URL `/{repo}/` |
 
 ---
 
