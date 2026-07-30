@@ -11,7 +11,7 @@ It defines:
 - Drive + Sheet → GitHub Action → static `site/` data flow
 - **Two-repo hosting:** this content/build repo vs destination public website repo
 - Generated files are **pushed** to the destination (`deploy_repo` / `DEPLOY_TOKEN`); live Pages is on the destination
-- **PAT** = Personal Access Token; stored only as secret `DEPLOY_TOKEN` (see README / ARCHITECTURE)
+- **PAT** = Personal Access Token; stored only as secret `DEPLOY_TOKEN` (see README scopes: fine-grained Contents R/W, or classic `public_repo`/`repo`)
 - Google Spreadsheet column schema and sharing rules
 - `config.json` / env / secrets overrides
 - What is generated vs source of truth
