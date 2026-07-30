@@ -1,6 +1,10 @@
 # Drive + Sheets → static website
 
-**Copy this template into your web hosting repo** (`owner.github.io`). That repo builds and hosts the site. No second “content” repo. **No `DEPLOY_TOKEN`.**
+**Public template** — who owns this GitHub repo does not matter. Copy it into **your** Pages host.
+
+**Pages requirement:** the host repo **must** be named **`owner.github.io`**. That is how GitHub serves `https://owner.github.io/`. Other repo names (project Pages) are not supported; CI rejects them.
+
+That `owner.github.io` copy builds and hosts the site. No second “content” repo. **No `DEPLOY_TOKEN`.**
 
 Sheet/Drive → Publish button → Action on `owner.github.io` → files on **`main` root** → GitHub Pages.
 
@@ -8,12 +12,12 @@ Sheet/Drive → Publish button → Action on `owner.github.io` → files on **`m
 
 ## Setup
 
-### 1. Hosting repo
+### 1. Hosting repo (`owner.github.io` required)
 
-1. Create or use **`owner.github.io`**
-2. Copy this template into it (or use “Use this template” and rename to `owner.github.io`)
+1. Create **`owner.github.io`** (or rename a template-generated repo to that exact name)
+2. Copy this public template into it
 3. **Settings → Pages → Deploy from a branch → Branch: `main` → Folder: `/` (root)**
-4. The Action checks naming + Pages settings and fails if wrong
+4. CI checks the name + Pages settings and **fails** if either is wrong
 
 ### 2. Google Spreadsheet + Publish button
 

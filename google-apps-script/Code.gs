@@ -4,9 +4,11 @@
  *
  * Script properties required:
  *   GH_PAT          – fine-grained PAT from the **web hosting repo owner**
- *                     (Actions: Read and write on that repo only — e.g. owner/owner.github.io)
- *   GH_REPO         – full URL of the hosting repo, e.g. https://github.com/owner/owner.github.io
- *                     (also accepts owner/repo)
+ *                     (not the public template's owner — that is irrelevant)
+ *                     Actions: Read and write on owner/owner.github.io only
+ *   GH_REPO         – full URL of the hosting repo; MUST be owner.github.io
+ *                     e.g. https://github.com/owner/owner.github.io
+ *                     (also accepts owner/repo; rejected if name ≠ owner.github.io)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
  *   CONTENT_SHEET_NAME – optional, default "your website content" (tab with site rows)
  *
@@ -171,8 +173,8 @@ function publishWebsite() {
   if (repo.toLowerCase() !== expected.toLowerCase()) {
     ui.alert(
       'Wrong hosting repo',
-      'GH_REPO must be the web host "' + expected + '" (got "' + repo + '").\n' +
-        'Copy the template into that repo; there is no separate content repo.',
+      'Serving Pages requires the repo named "' + expected + '" (got "' + repo + '").\n' +
+        'Copy the public template into that host. The template repo owner does not matter.',
       ui.ButtonSet.OK
     );
     return;

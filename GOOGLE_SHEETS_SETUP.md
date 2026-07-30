@@ -1,6 +1,10 @@
 # Google Spreadsheet + Apps Script setup
 
-Publish from a public Google Sheet into the **web hosting repo** (`owner.github.io`) where this template was copied. That repo hosts GitHub Pages from **`main` / root**. **No `DEPLOY_TOKEN`.**
+This guide is for the **web hosting repo** after you copy the **public template** into it. The template repo’s GitHub owner is irrelevant.
+
+**Pages requirement:** host repo name **must** be **`owner.github.io`**. GitHub only serves the root user/org site from that name. CI enforces it.
+
+Publish from a public Google Sheet into that host. Pages from **`main` / root**. **No `DEPLOY_TOKEN`.**
 
 Copy-paste script: [`google-apps-script/Code.gs`](google-apps-script/Code.gs) · Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
@@ -9,26 +13,26 @@ Copy-paste script: [`google-apps-script/Code.gs`](google-apps-script/Code.gs) ·
 ## What you will end up with
 
 1. Public Google Spreadsheet + **Import/Export** menu / Publish button
-2. Template copied into **`owner.github.io`** (website host)
+2. Public template copied into **`owner.github.io`** (required website host name)
 3. Pages: **Deploy from a branch → `main` → `/` (root)**
 4. Click Publish → Action builds → commits site files on `main`
 
-**One token only:**
+**One token only** (from the **hosting** repo owner — not related to who owns the public template):
 
 | Token | Where | Purpose |
 |-------|-------|---------|
-| **`GH_PAT`** | Apps Script Script properties | Owner fine-grained PAT — **Actions R/W on the hosting repo only** — starts the Action |
+| **`GH_PAT`** | Apps Script Script properties | Hosting-owner fine-grained PAT — **Actions R/W on `owner.github.io` only** — starts the Action |
 
 ---
 
 ## Part 0 — Hosting repo (required)
 
-1. Repo name must be **`{owner}.github.io`**
-2. Copy this template into that repo
+1. Repo name **must** be **`{owner}.github.io`** — required for Pages at `https://owner.github.io/`
+2. Copy the public template into that repo (template owner does not matter)
 3. **Settings → Pages → Deploy from a branch → `main` → `/` (root)**
-4. Actions enabled; workflow permissions allow the default `GITHUB_TOKEN` to commit (contents write is set in the workflow)
+4. Actions enabled; workflow can commit with `GITHUB_TOKEN`
 
-CI runs `scripts/check_host_repo.py` and fails if naming or Pages settings are wrong.
+CI runs `scripts/check_host_repo.py` and **fails** if the name is not `owner.github.io` or Pages is not `main` + `/`.
 
 ---
 

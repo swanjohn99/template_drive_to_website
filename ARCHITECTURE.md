@@ -5,7 +5,11 @@ Source of truth for data flow, spreadsheet schema, config, build output, and **w
 
 ## Purpose
 
-**Copy this template into the web hosting repo** (`owner.github.io`). That repo **is** the website host. There is no intermediate content repo and **no `DEPLOY_TOKEN`**.
+**This public template’s GitHub owner does not matter.** Anyone copies it into their own web host.
+
+**Hard requirement for serving Pages:** the live site must run in a repo named **`owner.github.io`** (user or org). Project Pages (`owner/some-other-repo`) are not supported. CI fails if the name is wrong.
+
+**Copy this template into the web hosting repo** (`owner.github.io`). That copy **is** the website host. There is no intermediate content repo and **no `DEPLOY_TOKEN`**.
 
 Static website generated from:
 
@@ -66,10 +70,12 @@ Created by the **owner** of the hosting repo. **No `DEPLOY_TOKEN`.** Never commi
 
 ### Hosting checks (enforced in CI)
 
-`scripts/check_host_repo.py` fails the Action unless:
+`scripts/check_host_repo.py` **requires** (hard fail otherwise):
 
-1. Repo name is `{owner}.github.io`
-2. Pages is enabled with source branch **`main`** and folder **`/`**
+1. Repo name is exactly `{owner}.github.io` (required to serve user/org Pages at `https://owner.github.io/`)
+2. Pages enabled with source branch **`main`** and folder **`/`**
+
+The public template repo itself is not a Pages host; only copies named `owner.github.io` are.
 
 ## Rebuild triggers
 

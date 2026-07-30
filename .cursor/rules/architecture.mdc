@@ -8,9 +8,11 @@ Before planning or editing this repo (or a fork/template copy), read `ARCHITECTU
 
 It defines:
 
-- **Template → hosting repo:** copy this template into `owner.github.io`. That repo is the website host (build + Pages). No intermediate content repo.
+- **Public template:** this repo is public; its GitHub owner does not matter. Users copy it into their own host.
+- **Pages host name required:** live site must be **`owner.github.io`** (not project Pages). CI hard-fails otherwise.
+- **Template → hosting repo:** copy into `owner.github.io`. That repo is the website host (build + Pages). No intermediate content repo.
 - **Primary publish:** Sheet Apps Script → `repository_dispatch` (`rebuild-site`) → build `site/` → publish to **`main` repo root** → Pages from **`main` / `/`**
-- **One PAT only:** `GH_PAT` = hosting **owner** fine-grained token, **that repo only**, Actions R/W. **Never `DEPLOY_TOKEN`.**
+- **One PAT only:** `GH_PAT` = **hosting repo owner** fine-grained token, **`owner.github.io` only**, Actions R/W. **Never `DEPLOY_TOKEN`.** (Unrelated to the public template’s owner.)
 - CI enforces naming (`owner.github.io`) and Pages (`main` + `/`) via `scripts/check_host_repo.py`
 - Spreadsheet schema + `your website content` tab; dispatch may send inline CSV
 - `config.json` / env / dispatch payload overrides (`spreadsheet_id` optional when publishing from the sheet)

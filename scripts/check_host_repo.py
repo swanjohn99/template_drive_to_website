@@ -50,7 +50,9 @@ def main() -> int:
     if repo.lower() != expected.lower():
         fail(
             f"Repo must be named '{expected}' (got '{repo}'). "
-            "Copy this template into the user/org GitHub Pages host repo."
+            "GitHub user/org Pages require owner.github.io. "
+            "Copy the public template into that hosting repo "
+            "(the template repo's owner does not matter)."
         )
     print(f"OK naming: {repository}")
 
