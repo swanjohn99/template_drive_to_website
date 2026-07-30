@@ -64,7 +64,7 @@ Rules:
 
 `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
 
-Put `SPREADSHEET_ID` into this repo’s `config.json` → `spreadsheet_id` (or Actions variable `SPREADSHEET_ID`).
+Put `SPREADSHEET_ID` into this repo only if you need non-sheet triggers (manual Action run / push rebuild). **Publish website** from the sheet sends the id automatically — no `config.json` entry required for that path.
 
 ### A5. Confirm CSV export works
 
@@ -204,10 +204,11 @@ on:
 
 Also ensure:
 
-1. `config.json` has the real `spreadsheet_id`
-2. **Settings → Pages → Source: GitHub Actions**
-3. For a root URL, the repo is named `username.github.io` (or org equivalent)
-4. Actions are enabled on this repo
+1. Prefer **Publish website** from the sheet (sends sheet id in the dispatch payload)
+2. Optional: Actions variable `SPREADSHEET_ID` or `config.json` → `spreadsheet_id` for manual / push rebuilds
+3. **Settings → Pages → Source: GitHub Actions**
+4. For a root URL, the repo is named `username.github.io` (or org equivalent)
+5. Actions are enabled on this repo
 
 ---
 
@@ -230,7 +231,7 @@ Also ensure:
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
 | Button does nothing | Script name typo | Assign `publishWebsite` exactly |
-| Action runs but site empty / old | Sheet not public / wrong spreadsheet_id | Part A4–A5; check `config.json` |
+| Action runs but site empty / old | Sheet not public / sample fallback | Part A4–A5; publish from sheet, or set `SPREADSHEET_ID` / `config.json` for manual runs |
 | Deploy job fails / Pages 404 | Pages source not GitHub Actions | Settings → Pages → Source: GitHub Actions |
 | Site at `/repo-name` not root | Project Pages repo name | Rename to `username.github.io` for root URL |
 

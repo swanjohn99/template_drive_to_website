@@ -33,7 +33,7 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 ```json
 {
-  "spreadsheet_id": "YOUR_SHEET_ID",
+  "spreadsheet_id": "",
   "sheet_gid": "0",
   "site_title": "Your Brand",
   "site_tagline": "One short line",
@@ -42,6 +42,8 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
   "output_dir": "site"
 }
 ```
+
+`spreadsheet_id` can stay empty when you publish from the sheet — Apps Script sends the id. Set it (or Actions var `SPREADSHEET_ID`) only for manual / push rebuilds without the sheet button.
 
 ### 4. GitHub Pages (same repo)
 

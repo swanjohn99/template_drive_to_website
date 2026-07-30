@@ -195,6 +195,7 @@ function publishWebsite() {
     client_payload: {
       source: 'google-sheets',
       spreadsheet_id: SpreadsheetApp.getActiveSpreadsheet().getId(),
+      sheet_gid: String(SpreadsheetApp.getActiveSheet().getSheetId()),
       triggered_by: Session.getActiveUser().getEmail() || 'unknown',
       triggered_at: new Date().toISOString()
     }

@@ -83,7 +83,8 @@ After Sheet or Drive content changes, click **Publish website** in the sheet (do
 
   `https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={sheet_gid}`
 
-- `spreadsheet_id` / `sheet_gid` come from `config.json` or Actions vars/env
+- `spreadsheet_id` / `sheet_gid` come from (in order): Apps Script `repository_dispatch` payload → Actions vars/env → `config.json`
+- Publish-from-sheet does **not** require `spreadsheet_id` in `config.json`
 - If export returns HTML, sharing is wrong (not public)
 
 ### Header row (required shape)
@@ -143,8 +144,8 @@ Each Drive file must be **Anyone with the link → Viewer**.
 
 | Key               | Role |
 |-------------------|------|
-| `spreadsheet_id`  | Sheet id (`REPLACE_WITH_YOUR_SHEET_ID` → demo/sample mode) |
-| `sheet_gid`       | Tab gid (default `"0"`) |
+| `spreadsheet_id`  | Optional sheet id for local / manual / push builds. Empty → demo sample unless env or dispatch payload supplies one |
+| `sheet_gid`       | Tab gid (default `"0"`; publish-from-sheet also sends active tab gid) |
 | `site_title`      | Brand / hero brand text |
 | `site_tagline`    | Hero headline |
 | `image_max_width` | Resize max width px (default 1400) |
@@ -200,7 +201,7 @@ Env / Actions vars win over `config.json` when set.
 3. Spreadsheet schema above is the contract; column renames need matching aliases in `scripts/build.py` (`process_rows` / `normalize_key`).
 4. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term. Do not commit `site/`.
 5. After content changes, publish from the sheet — that rebuild **and** redeploys GitHub Pages on this repo.
-6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` → `sample/content.csv` placeholders; real deploys need a real sheet id + public Drive files.
+6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` (and no env/dispatch id) → `sample/content.csv` placeholders; publish-from-sheet supplies the id in the payload.
 7. **Live hosting is this repo’s GitHub Pages** (Actions artifact), not a second destination repo.
 8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions; usually a **contributor’s** token). Pair with `GH_REPO` as the full GitHub URL. Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
 
