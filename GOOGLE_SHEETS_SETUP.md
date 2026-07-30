@@ -15,7 +15,7 @@ Architecture overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 3. A sheet menu **Import/Export** (**Import Picture URLs**, **Publish website**) and/or a clickable button
 4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → deploys GitHub Pages on this repo
 
-You need **one** GitHub token (often created by a collaborator who can start Actions):
+You need **one** GitHub token (usually created on the **contributor** account that can start Actions):
 
 | Token | Where stored | Purpose |
 |-------|--------------|---------|
@@ -80,7 +80,7 @@ You should download/see CSV text, not a Google login HTML page. If you get HTML,
 
 This token only starts the workflow via `repository_dispatch`. Pages publish uses the Action’s built-in `GITHUB_TOKEN`.
 
-Create it on **any account that can start Actions on this repo** — often a collaborator/contributor, not necessarily the GitHub user/org that owns the repo in the URL.
+Create it on the **contributor/collaborator account** that can start Actions on this repo (usual case). That account does not need to be the user/org in the GitHub URL.
 
 ### B1. Create a fine-grained PAT (preferred)
 
@@ -124,10 +124,11 @@ Add:
 
 | Property | Example value | Notes |
 |----------|---------------|-------|
-| `GH_PAT` | `github_pat_…` | Token from Part B (collaborator OK) |
-| `GH_REPO_OWNER` | `swanjohn99` | User/org in the repo URL `github.com/THIS/repo` — **not** the person who made the PAT. Legacy alias: `GH_OWNER` |
-| `GH_REPO` | `username.github.io` | Repo name only (not `owner/repo`) |
+| `GH_PAT` | `github_pat_…` | Token from Part B — usually the **contributor** account |
+| `GH_REPO` | `https://github.com/swanjohn99/username.github.io` | Full repo URL (also accepts `owner/repo`). Do **not** put the PAT author’s username here unless that is the URL owner |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
+
+Legacy: if `GH_REPO` is only the repo name, also set `GH_REPO_OWNER` (or `GH_OWNER`) to the URL user/org.
 
 3. Save
 
@@ -214,7 +215,7 @@ Also ensure:
 
 1. Edit a cell in the sheet → save
 2. Click **Publish website** (button or Import/Export menu)
-3. Open `https://github.com/GH_REPO_OWNER/GH_REPO/actions`
+3. Open the Actions tab for the repo in `GH_REPO`
 4. Run **Build site from Google Drive + Sheets** should appear (event `repository_dispatch`)
 5. When green: open the Pages URL from the deploy job / Settings → Pages and refresh
 
@@ -224,8 +225,8 @@ Also ensure:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on this repo (collaborator account OK) |
-| Apps Script `404` | Wrong `GH_REPO_OWNER` / `GH_REPO` | Use the URL path (`github.com/OWNER/REPO`), not the PAT author’s username |
+| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on this repo (contributor account) |
+| Apps Script `404` | Wrong `GH_REPO` URL | Paste the full `https://github.com/owner/repo` URL, not the PAT author’s profile |
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
 | Button does nothing | Script name typo | Assign `publishWebsite` exactly |

@@ -53,15 +53,14 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 **PAT** = **Personal Access Token**. Needed so the spreadsheet can start this repo’s Action (`repository_dispatch`).
 
-Create a fine-grained PAT with **Actions: Read and write** on **this** repo. Any collaborator who can start Actions can create it — that person is often not the GitHub user/org in the repo URL.
+Create a fine-grained PAT with **Actions: Read and write** on **this** repo — usually on the **contributor** account that will operate the sheet.
 
 In Apps Script Script properties set:
 
 | Property | Meaning |
 |----------|---------|
-| `GH_PAT` | The token above |
-| `GH_REPO_OWNER` | User/org in `github.com/THIS/repo` (not the PAT author). Legacy: `GH_OWNER` |
-| `GH_REPO` | Repo name only |
+| `GH_PAT` | Contributor’s token (usual) |
+| `GH_REPO` | Full URL, e.g. `https://github.com/owner/username.github.io` |
 
 Full steps: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md).
 

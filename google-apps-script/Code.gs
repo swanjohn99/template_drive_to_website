@@ -4,11 +4,13 @@
  *
  * Script properties required:
  *   GH_PAT          – fine-grained PAT with Actions: Read and write on this repo
- *                     (create on any account that can start Actions — often a collaborator)
- *   GH_REPO_OWNER   – user/org segment of the repo URL (github.com/THIS/repo), not the PAT author
- *                     (legacy alias: GH_OWNER)
- *   GH_REPO         – this repo name only (e.g. username.github.io)
+ *                     (usually created on the contributor/collaborator account)
+ *   GH_REPO         – full repo URL, e.g. https://github.com/owner/username.github.io
+ *                     (also accepts owner/repo)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
+ *
+ * Legacy (optional if GH_REPO is only the repo name):
+ *   GH_REPO_OWNER / GH_OWNER – user/org segment when GH_REPO is not a full URL
  *
  * Drive layout for Import Picture URLs:
  *   Parent folder
@@ -125,28 +127,67 @@ function populatePictureUrls() {
 /**
  * Assign this function to a Drawing / button on the sheet.
  */
-function githubRepoOwner_(props) {
-  // URL path owner/org (github.com/OWNER/REPO) — not the person who created GH_PAT.
-  return props.getProperty('GH_REPO_OWNER') || props.getProperty('GH_OWNER');
+
+/**
+ * Resolve {owner, repo} from GH_REPO (preferred: full URL) or legacy split props.
+ * GH_PAT is usually from a contributor; owner/repo always come from the repo URL.
+ */
+function resolveGithubRepo_(props) {
+  var raw = (props.getProperty('GH_REPO') || '').trim();
+  if (!raw) {
+    return null;
+  }
+
+  var owner = '';
+  var repo = '';
+
+  // Full URL or host path: https://github.com/owner/repo[.git][/...]
+  var urlMatch = raw.match(
+    /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/\s]+)\/([^\/\s?#]+)/i
+  );
+  if (urlMatch) {
+    owner = urlMatch[1];
+    repo = urlMatch[2].replace(/\.git$/i, '');
+  } else if (raw.indexOf('/') !== -1) {
+    // owner/repo shorthand
+    var parts = raw.replace(/^\/+|\/+$/g, '').split('/');
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      owner = parts[0];
+      repo = parts[1].replace(/\.git$/i, '');
+    }
+  } else {
+    // Legacy: repo name only + GH_REPO_OWNER / GH_OWNER
+    owner = props.getProperty('GH_REPO_OWNER') || props.getProperty('GH_OWNER') || '';
+    repo = raw;
+  }
+
+  if (!owner || !repo) {
+    return null;
+  }
+  return { owner: owner, repo: repo };
 }
 
 function publishWebsite() {
   var ui = SpreadsheetApp.getUi();
   var props = PropertiesService.getScriptProperties();
   var token = props.getProperty('GH_PAT');
-  var owner = githubRepoOwner_(props);
-  var repo = props.getProperty('GH_REPO');
+  var target = resolveGithubRepo_(props);
   var eventType = props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE;
 
-  if (!token || !owner || !repo) {
+  if (!token || !target) {
     ui.alert(
       'Missing script properties',
-      'Set GH_PAT, GH_REPO_OWNER, and GH_REPO in Project Settings → Script properties.\n' +
-        '(GH_OWNER still works as a legacy alias for GH_REPO_OWNER.)\nSee GOOGLE_SHEETS_SETUP.md.',
+      'Set GH_PAT and GH_REPO in Project Settings → Script properties.\n' +
+        'GH_REPO should be the full URL, e.g. https://github.com/owner/repo\n' +
+        '(Legacy: GH_REPO as name only + GH_REPO_OWNER / GH_OWNER still works.)\n' +
+        'See GOOGLE_SHEETS_SETUP.md.',
       ui.ButtonSet.OK
     );
     return;
   }
+
+  var owner = target.owner;
+  var repo = target.repo;
 
   var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/dispatches';
   var payload = {
@@ -196,17 +237,13 @@ function publishWebsite() {
  */
 function checkPublishConfig() {
   var props = PropertiesService.getScriptProperties();
-  var owner = githubRepoOwner_(props);
+  var target = resolveGithubRepo_(props);
   var lines = [
     'GH_PAT: ' + (props.getProperty('GH_PAT')
-      ? 'set (' + props.getProperty('GH_PAT').length + ' chars)'
+      ? 'set (' + props.getProperty('GH_PAT').length + ' chars) — usually contributor account'
       : 'MISSING'),
-    'GH_REPO_OWNER: ' + (props.getProperty('GH_REPO_OWNER') ||
-      (props.getProperty('GH_OWNER')
-        ? props.getProperty('GH_OWNER') + ' (via legacy GH_OWNER)'
-        : 'MISSING')),
-    'resolved owner/org: ' + (owner || 'MISSING'),
     'GH_REPO: ' + (props.getProperty('GH_REPO') || 'MISSING'),
+    'resolved: ' + (target ? target.owner + '/' + target.repo : 'MISSING'),
     'GH_EVENT_TYPE: ' + (props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE + ' (default)')
   ];
   Logger.log(lines.join('\n'));
