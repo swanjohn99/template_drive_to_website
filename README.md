@@ -8,6 +8,8 @@ That `owner.github.io` copy builds and hosts the site. No second “content” r
 
 Sheet/Drive → Publish button → Action on `owner.github.io` → files on **`main` root** → GitHub Pages.
 
+**Owners stay out of GitHub day-to-day:** edit the Sheet + Drive folder, click Publish. No repo config file. A contributor can handle design changes in the hosting repo.
+
 **Setup:** [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · **Planners:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ## Setup
@@ -25,25 +27,10 @@ Follow [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md).
 
 - Tab name: **`your website content`**
 - Headers: `title`, `description`, `image`, `section`, `order`, `published`
+- Settings tab **`settings`**: `key` / `value` for `site_title`, `site_tagline`, `image_max_width`, `image_quality`
 - Share sheet + Drive files: **Anyone with the link → Viewer**
 
-### 3. `config.json` (optional sheet id)
-
-```json
-{
-  "spreadsheet_id": "",
-  "sheet_gid": "0",
-  "site_title": "Your Brand",
-  "site_tagline": "One short line",
-  "image_max_width": 1400,
-  "image_quality": 82,
-  "output_dir": "site"
-}
-```
-
-Publish-from-sheet sends the sheet id (and often inline CSV). Set `spreadsheet_id` only for manual / push rebuilds.
-
-### 4. Owner fine-grained PAT (`GH_PAT`)
+### 3. Owner fine-grained PAT (`GH_PAT`)
 
 Created by the **owner** of `owner.github.io`:
 
@@ -54,7 +41,7 @@ Created by the **owner** of `owner.github.io`:
 
 Never commit the PAT. There is no deploy PAT / `DEPLOY_TOKEN`.
 
-### 5. Publish
+### 4. Publish
 
 **Import/Export → Publish website** (or the sheet button) → Actions tab on the hosting repo → when green, open `https://owner.github.io/`.
 
