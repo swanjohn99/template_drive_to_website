@@ -86,7 +86,7 @@ Create it on the **contributor/collaborator account** that can start Actions on 
 
 1. Open https://github.com/settings/personal-access-tokens  
 2. **Generate new token** (fine-grained)
-3. **Resource owner**: the account creating the token (you / the collaborator)
+3. **Resource owner**: the account creating the token (usually the contributor)
 4. **Repository access**: **Only select this repo** (often `username.github.io`)
 5. Repository permissions:
 
