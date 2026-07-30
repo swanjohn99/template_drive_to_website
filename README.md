@@ -48,11 +48,44 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 1. Other user’s public Pages repo (you are a **collaborator** with push to `main`)
 2. Pages enabled on **that** repo
-3. In **this** content repo → Actions secret `DEPLOY_TOKEN` = PAT that can write the destination
+3. Create a **PAT** and store it as Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
 
 Without `deploy_repo` + `DEPLOY_TOKEN`, the Action only builds (and optionally commits) `site/` locally.
 
-### 5. Run the Action
+### 5. What is a PAT?
+
+**PAT** = **Personal Access Token**. A password-like string GitHub issues to *your* account so automation can act as you.
+
+Why it’s needed here:
+
+- The Action runs in the **content** repo
+- It must `git push` into a **different** repo (the website host)
+- GitHub’s built-in `GITHUB_TOKEN` only works for the repo where the Action runs — it **cannot** push to someone else’s website repo
+- So you create a PAT on an account that **already has write access** to the destination (you, as collaborator), and give the Action that token as `DEPLOY_TOKEN`
+
+**Never** put a PAT in `config.json`, commit it, or paste it into issues/chat. Only store it as a GitHub Actions **secret**.
+
+#### Create a fine-grained PAT (preferred)
+
+1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**  
+   Direct link: https://github.com/settings/personal-access-tokens
+2. **Resource owner**: your user (the collaborator on the website repo)
+3. **Repository access**: Only select the **destination website repo**
+4. **Permissions** → Repository permissions → **Contents: Read and write** (needed to push files)
+5. Generate, copy the token once (starts with `github_pat_…`)
+
+Classic tokens also work (`repo` scope) but are broader; fine-grained is safer.
+
+#### Store it as `DEPLOY_TOKEN`
+
+1. Open **this content repo** on GitHub  
+2. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**  
+3. Name: `DEPLOY_TOKEN`  
+4. Value: paste the PAT → Save  
+
+The workflow clones/pushes the destination with that secret. If the token expires or is revoked, deploys fail until you create a new PAT and update the secret.
+
+### 6. Run the Action
 
 Actions → **Build site from Google Drive + Sheets** → **Run workflow**.
 

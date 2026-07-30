@@ -50,9 +50,25 @@ Editors / uploaders
   GitHub Pages on the DESTINATION repo (public site)
 ```
 
-**Default `GITHUB_TOKEN` cannot push to another repo.** Deploy needs secret `DEPLOY_TOKEN` (PAT or fine-grained token) for an account that can write the destination (the collaborator).
+**Default `GITHUB_TOKEN` cannot push to another repo.** Deploy needs secret `DEPLOY_TOKEN`.
+
+### What `DEPLOY_TOKEN` / PAT means
+
+**PAT** = **Personal Access Token** — a GitHub credential for a user account, used by CI instead of a password.
+
+| Piece | Meaning |
+|-------|---------|
+| Why | Action in content repo must push commits into a *different* destination repo |
+| Why not `GITHUB_TOKEN` | Scoped only to the repo running the workflow; no write access to other repos |
+| Who creates it | An account that is already a **collaborator with write** on the destination |
+| Where it lives | Content repo → Settings → Secrets → Actions → secret name `DEPLOY_TOKEN` |
+| Recommended type | Fine-grained PAT, single destination repo, **Contents: Read and write** |
+| Security | Never commit the token; rotate if leaked or expired |
+
+Human-oriented steps: `README.md` § “What is a PAT?”.
 
 ### Multi-site warning
+
 
 Several content repos pushing into the **same** destination path will overwrite each other. Prefer:
 
@@ -153,7 +169,7 @@ Each Drive file must be **Anyone with the link → Viewer**.
 
 | Name | Kind | Maps to |
 |------|------|---------|
-| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | PAT with `contents: write` on destination; account must be collaborator |
+| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | Personal Access Token (PAT) for a collaborator; Contents read/write on destination |
 | `DEPLOY_REPO` | Var/secret optional override | `deploy_repo` |
 | `DEPLOY_BRANCH` | Var optional | `deploy_branch` |
 | `DEPLOY_PATH` | Var optional | `deploy_path` |
@@ -174,7 +190,7 @@ Env / Actions vars win over `config.json` when set.
 1. Public repo that GitHub Pages serves (often `username.github.io`)
 2. Pages enabled on that repo (branch/`deploy_path` as configured)
 3. Content-repo operator added as collaborator with push to deploy branch
-4. Content repo secret `DEPLOY_TOKEN` = their PAT (or fine-grained token scoped to destination)
+4. Content repo secret `DEPLOY_TOKEN` = their Personal Access Token (fine-grained, Contents: Read and write on destination)
 
 ## Code map
 
