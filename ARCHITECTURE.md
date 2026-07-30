@@ -55,11 +55,13 @@ Editors / uploaders
 
 ### One PAT (`GH_PAT` only)
 
-| Token | Stored in | Repo it targets | Fine-grained permission |
-|-------|-----------|-----------------|-------------------------|
-| **`GH_PAT`** | Apps Script **Script properties** | **This** repo | **Actions: Read and write** (+ Metadata R) |
+| Token | Stored in | Repo it targets | Permission |
+|-------|-----------|-----------------|------------|
+| **`GH_PAT`** | Apps Script **Script properties** | **This** repo | Classic: `public_repo` / `repo`. Fine-grained: **Actions: Read and write** (+ Metadata R) |
 
-`GH_PAT` is usually created on a **contributor** account. `GH_REPO` should be the full repo URL (`https://github.com/owner/repo`); the script parses owner/name from it (not from the PAT author). Legacy split props `GH_REPO_OWNER` / `GH_OWNER` + repo name still work.
+`GH_PAT` is usually created on a **contributor** account that is a **Write** collaborator on this repo. `GH_REPO` should be the full repo URL (`https://github.com/owner/repo`); the script parses owner/name from it (not from the PAT author).
+
+**Owner must grant access first:** Collaborators → **Write**; Actions enabled; workflow permissions Read and write. See `GOOGLE_SHEETS_SETUP.md` Part 0. On another person’s user-owned repo, contributors usually need a **classic** PAT (fine-grained often cannot select that repo).
 
 Deploy uses the workflow’s built-in `GITHUB_TOKEN` with `pages: write` and `id-token: write`. Never commit `GH_PAT`.
 
@@ -172,8 +174,9 @@ Env / Actions vars win over `config.json` when set.
 
 1. Repo named for root URL if needed: `username.github.io` (or org equivalent)
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
-3. First successful workflow run creates the `github-pages` environment and publishes
-4. Live URL: `https://username.github.io/` for a user/org site repo; project repos use `https://username.github.io/repo-name/`
+3. Contributor is a **Write** collaborator and can open **Actions** / Run workflow
+4. First successful workflow run creates the `github-pages` environment and publishes
+5. Live URL: `https://username.github.io/` for a user/org site repo; project repos use `https://username.github.io/repo-name/`
 
 ## Code map
 
@@ -203,7 +206,7 @@ Env / Actions vars win over `config.json` when set.
 5. After content changes, publish from the sheet — that rebuild **and** redeploys GitHub Pages on this repo.
 6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` (and no env/dispatch id) → `sample/content.csv` placeholders; publish-from-sheet supplies the id in the payload.
 7. **Live hosting is this repo’s GitHub Pages** (Actions artifact), not a second destination repo.
-8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions; usually a **contributor’s** token). Pair with `GH_REPO` as the full GitHub URL. Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
+8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions; usually a **contributor’s** token who has **Write** collaborator access). Pair with `GH_REPO` as the full GitHub URL. Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
 
 ## Typical change recipes
 

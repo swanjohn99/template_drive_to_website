@@ -45,17 +45,24 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 `spreadsheet_id` can stay empty when you publish from the sheet — Apps Script sends the id. Set it (or Actions var `SPREADSHEET_ID`) only for manual / push rebuilds without the sheet button.
 
-### 4. GitHub Pages (same repo)
+### 4. GitHub Pages + contributor Actions access
 
 1. For a **root** site URL (`https://username.github.io/`), name this repo `username.github.io` (or the org equivalent)
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
-3. No second token — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact
+3. **Settings → Collaborators**: add the contributor with **Write** (required so they can start Actions)
+4. **Settings → Actions → General**: Actions enabled; workflow permissions **Read and write**
+5. No second token — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact
+
+Contributor check: they can open this repo’s **Actions** tab and **Run workflow**.
 
 ### 5. GitHub token for the sheet (`GH_PAT`)
 
 **PAT** = **Personal Access Token**. Needed so the spreadsheet can start this repo’s Action (`repository_dispatch`).
 
-Create a fine-grained PAT with **Actions: Read and write** on **this** repo — usually on the **contributor** account that will operate the sheet.
+Create it on the **contributor** account **after** they have Write access:
+
+- **Usual:** classic PAT with `public_repo` (public repo) or `repo` (private) — fine-grained often cannot target another person’s user-owned repo
+- **If available:** fine-grained with **Actions: Read and write** on this repo
 
 In Apps Script Script properties set:
 
@@ -64,7 +71,7 @@ In Apps Script Script properties set:
 | `GH_PAT` | Contributor’s token (usual) |
 | `GH_REPO` | Full URL, e.g. `https://github.com/owner/username.github.io` |
 
-Full steps: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md).
+Full steps: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) (Part 0 + Part B).
 
 **Never** put a PAT in `config.json`, commit it, or paste it into issues/chat.
 

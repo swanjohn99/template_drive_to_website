@@ -25,6 +25,32 @@ Pages deploy uses the workflow `GITHUB_TOKEN` (`pages: write` + `id-token: write
 
 ---
 
+## Part 0 — Contributor can run Actions on this repo (required)
+
+The person who publishes from the sheet is usually a **contributor**, not the GitHub account in the repo URL. The **repo owner** must grant them access **before** creating `GH_PAT`.
+
+### Owner checklist
+
+1. **Add collaborator with Write**
+   - Repo → **Settings → Collaborators** (or **Manage access**)
+   - Invite the contributor
+   - Role: **Write** (or **Maintain** / **Admin**) — Read is not enough to start Actions via the API
+2. **Enable Actions**
+   - **Settings → Actions → General**
+   - Allow GitHub Actions (e.g. **Allow all actions and reusable workflows**)
+   - **Workflow permissions**: **Read and write permissions** (needed so the workflow can deploy Pages with `GITHUB_TOKEN`)
+3. **Pages environment**
+   - After the first Pages deploy, **Settings → Environments → `github-pages`**
+   - Do **not** leave required reviewers that block the contributor, unless they are added as allowed deployers
+4. **Confirm the contributor can use Actions**
+   - Contributor accepts the invite
+   - Opens this repo → **Actions** tab (not 404)
+   - Can open **Build site from Google Drive + Sheets** → **Run workflow** (even if they only use the sheet button later)
+
+If step 4 fails, stop — a PAT will not help until collaborator Write + Actions are fixed.
+
+---
+
 ## Part A — Spreadsheet content
 
 ### A1. Create the spreadsheet
@@ -80,29 +106,43 @@ You should download/see CSV text, not a Google login HTML page. If you get HTML,
 
 This token only starts the workflow via `repository_dispatch`. Pages publish uses the Action’s built-in `GITHUB_TOKEN`.
 
-Create it on the **contributor/collaborator account** that can start Actions on this repo (usual case). That account does not need to be the user/org in the GitHub URL.
+Create it on the **contributor** account (usual case) **after** Part 0. That account does not need to match the user/org in the GitHub URL.
 
-### B1. Create a fine-grained PAT (preferred)
+### B1. Create the PAT on the contributor account
+
+**Option A — Classic PAT (usual when the repo is under someone else’s user account)**
+
+Fine-grained tokens often **cannot** target another person’s user-owned repo. Use classic:
+
+1. https://github.com/settings/tokens → **Tokens (classic)** → **Generate new token**
+2. Enable **only**:
+   - Public repo → `public_repo`
+   - Private repo → `repo`
+3. Generate → copy once (`ghp_…`)
+
+**Option B — Fine-grained PAT (when the contributor can select this repo)**
+
+Works if the repo is under an org the contributor belongs to, or under the contributor’s own account:
 
 1. Open https://github.com/settings/personal-access-tokens  
 2. **Generate new token** (fine-grained)
-3. **Resource owner**: the account creating the token (usually the contributor)
-4. **Repository access**: **Only select this repo** (often `username.github.io`)
+3. **Resource owner**: account/org that **owns the repo** (not always the contributor)
+4. **Repository access**: **Only select this repo**
 5. Repository permissions:
 
 | Permission | Access |
 |------------|--------|
 | **Actions** | **Read and write** |
 | **Metadata** | **Read-only** (usually automatic) |
-| Contents | No access (unless GitHub requires read; add **Contents: Read-only** if dispatch returns 404) |
+| Contents | **Read-only** if dispatch returns 404 without it |
 
 6. Generate → copy once (`github_pat_…`)
 
-Classic alternative: token with `repo` scope on an account that can administer Actions on this repo (broader — prefer fine-grained).
-
 ### B2. Keep this token ready
 
-You will paste it into Apps Script Script properties as `GH_PAT` in Part C. Never commit it to Git.
+Paste into Apps Script Script properties as `GH_PAT` in Part C. Never commit it to Git.
+
+Contributor smoke test (optional): with the PAT, they should be able to trigger `repository_dispatch` / see workflow runs under **Actions**. If GitHub returns 401/403, re-check Part 0 (Write collaborator) and token scopes.
 
 ---
 
@@ -226,7 +266,8 @@ Also ensure:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on this repo (contributor account) |
+| Apps Script `401` / `403` | Bad/expired `GH_PAT`, wrong scopes, or **not a Write collaborator** | Part 0 (Write access) + Part B (classic `public_repo` / `repo`, or fine-grained Actions R/W) |
+| Contributor cannot open **Actions** / Run workflow | Missing invite, Read-only role, or Actions disabled | Part 0 |
 | Apps Script `404` | Wrong `GH_REPO` URL | Paste the full `https://github.com/owner/repo` URL, not the PAT author’s profile |
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
