@@ -5,5 +5,9 @@
   "site_tagline": "Stories and pictures from the field",
   "image_max_width": 1400,
   "image_quality": 82,
-  "output_dir": "site"
+  "output_dir": "site",
+  "deploy_repo": "",
+  "deploy_branch": "main",
+  "deploy_path": ".",
+  "commit_site_locally": true
 }

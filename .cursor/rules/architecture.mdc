@@ -1,5 +1,5 @@
 ---
-description: Read architecture and spreadsheet contract before planning
+description: Read architecture, spreadsheet contract, and cross-repo deploy model
 globs:
 alwaysApply: true
 ---
@@ -9,9 +9,12 @@ Before planning or editing this repo (or a fork/template copy), read `ARCHITECTU
 It defines:
 
 - Drive + Sheet → GitHub Action → static `site/` data flow
+- **Two-repo hosting:** this content/build repo vs destination public website repo
+- Generated files are **pushed** to the destination (`deploy_repo` / `DEPLOY_TOKEN`); live Pages is on the destination
 - Google Spreadsheet column schema and sharing rules
-- `config.json` / env overrides
+- `config.json` / env / secrets overrides
 - What is generated vs source of truth
+- Overwrite risk when multiple content repos share one destination path
 - Safe change recipes
 
-Do not invent alternate sheet schemas or private Google API auth unless the user asks.
+Do not invent alternate sheet schemas, private Google API auth, or same-repo-only Pages as the production host unless the user asks.

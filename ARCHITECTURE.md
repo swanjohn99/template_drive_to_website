@@ -1,7 +1,7 @@
 # Architecture (for Cursor planners)
 
 Use this file when planning changes in repos created from this template.
-Source of truth for data flow, spreadsheet schema, config, and build output.
+Source of truth for data flow, spreadsheet schema, config, build output, and **where the live site is hosted**.
 
 ## Purpose
 
@@ -9,11 +9,21 @@ Static website generated from:
 
 1. **Google Spreadsheet** (public) — page copy / metadata
 2. **Google Drive files** (public) — photos referenced by the sheet
-3. **GitHub Action** — fetch → resize → write `site/` → optional Pages deploy
+3. **GitHub Action in this (content) repo** — fetch → resize → write `site/`
+4. **Push generated files into a separate public website repo** — that repo is what GitHub Pages hosts
 
 No runtime backend. No Google API keys. Public share links only.
 
-## Data flow
+## Two-repo model
+
+GitHub user/org sites are typically one primary public host (`username.github.io` or one designated Pages repo). This template assumes:
+
+| Repo | Role |
+|------|------|
+| **Content / build repo** (this template, or a copy) | Sheet/Drive wiring, tweaks, Action that builds `site/` |
+| **Destination website repo** (another user’s public host) | Receives generated static files; Pages serves that repo |
+
+The person running the content repo is a **collaborator with write access to `main`** (or the deploy branch) on the destination repo.
 
 ```text
 Editors / uploaders
@@ -21,6 +31,7 @@ Editors / uploaders
   └─ Google Sheet  (rows of content, Anyone-with-link)
            │
            ▼
+  Content repo  (template copy — tweaks live here)
   GitHub Action (.github/workflows/build.yml)
            │
            ▼
@@ -30,17 +41,32 @@ Editors / uploaders
       ├─ resize with Pillow → site/images/*.jpg
       └─ render site/index.html + assets + data.json
            │
+           ├─ optional: commit site/ in content repo (preview / history)
+           │
            ▼
-  Commit site/  +  GitHub Pages artifact
+  Push site/ contents → destination website repo (main or configured branch)
+           │
+           ▼
+  GitHub Pages on the DESTINATION repo (public site)
 ```
 
-**Rebuild triggers**
+**Default `GITHUB_TOKEN` cannot push to another repo.** Deploy needs secret `DEPLOY_TOKEN` (PAT or fine-grained token) for an account that can write the destination (the collaborator).
+
+### Multi-site warning
+
+Several content repos pushing into the **same** destination path will overwrite each other. Prefer:
+
+- one content repo → one destination path, or
+- different `deploy_path` subfolders per site, or
+- different destination repos
+
+## Rebuild triggers
 
 - Manual: Actions → `Build site from Google Drive + Sheets` → Run workflow
 - Schedule: hourly cron
 - Push to `main` touching `config.json`, `scripts/**`, `sample/**`, workflow, or `requirements.txt`
 
-After any Sheet or Drive content change, re-run the Action (or wait for cron).
+After any Sheet or Drive content change, re-run the Action (or wait for cron). That rebuild also re-pushes to the destination website repo when deploy is configured.
 
 ## Google Spreadsheet configuration
 
@@ -117,48 +143,66 @@ Each Drive file must be **Anyone with the link → Viewer**.
 | `site_tagline`    | Hero headline |
 | `image_max_width` | Resize max width px (default 1400) |
 | `image_quality`   | JPEG quality (default 82) |
-| `output_dir`      | Output folder (default `site`) |
+| `output_dir`      | Local build folder (default `site`) |
+| `deploy_repo`     | Destination `owner/repo` (empty = skip remote push) |
+| `deploy_branch`   | Branch on destination (default `main`) |
+| `deploy_path`     | Path inside destination to write files (default `.` = repo root) |
+| `commit_site_locally` | If `true`, also commit `site/` back to this content repo |
 
-### Env / Actions variable overrides
+### Secrets / variables (Actions)
 
-| Env / var           | Maps to |
-|---------------------|---------|
-| `SPREADSHEET_ID`    | `spreadsheet_id` |
-| `SPREADSHEET_URL`   | parses id + optional `gid` |
-| `SHEET_GID`         | `sheet_gid` |
-| `SITE_TITLE`        | `site_title` |
-| `SITE_TAGLINE`      | `site_tagline` |
-| `IMAGE_MAX_WIDTH`   | `image_max_width` |
-| `IMAGE_QUALITY`     | `image_quality` |
-| `USE_SAMPLE=1`      | force `sample/content.csv` + placeholder JPEGs |
-| `CONFIG_PATH`       | alternate config file path |
+| Name | Kind | Maps to |
+|------|------|---------|
+| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | PAT with `contents: write` on destination; account must be collaborator |
+| `DEPLOY_REPO` | Var/secret optional override | `deploy_repo` |
+| `DEPLOY_BRANCH` | Var optional | `deploy_branch` |
+| `DEPLOY_PATH` | Var optional | `deploy_path` |
+| `SPREADSHEET_ID` | Var/secret | `spreadsheet_id` |
+| `SPREADSHEET_URL` | Var/secret | parses id + optional `gid` |
+| `SHEET_GID` | Var | `sheet_gid` |
+| `SITE_TITLE` | Var | `site_title` |
+| `SITE_TAGLINE` | Var | `site_tagline` |
+| `IMAGE_MAX_WIDTH` | Var | `image_max_width` |
+| `IMAGE_QUALITY` | Var | `image_quality` |
+| `USE_SAMPLE=1` | Env | force `sample/content.csv` + placeholder JPEGs |
+| `CONFIG_PATH` | Env | alternate config file path |
 
-Env wins over `config.json` when set.
+Env / Actions vars win over `config.json` when set.
+
+### Destination website repo checklist
+
+1. Public repo that GitHub Pages serves (often `username.github.io`)
+2. Pages enabled on that repo (branch/`deploy_path` as configured)
+3. Content-repo operator added as collaborator with push to deploy branch
+4. Content repo secret `DEPLOY_TOKEN` = their PAT (or fine-grained token scoped to destination)
 
 ## Code map
 
 | Path | Role |
 |------|------|
-| `scripts/build.py` | Only builder: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
-| `.github/workflows/build.yml` | CI: install → build → commit `site/` → Pages artifact/deploy |
-| `config.json` | Site + sheet wiring |
+| `scripts/build.py` | Builder only: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
+| `.github/workflows/build.yml` | CI: build → optional local `site/` commit → push `site/` to destination repo |
+| `config.json` | Sheet + brand + **deploy_repo / branch / path** |
 | `sample/content.csv` | Demo sheet shape when no real id configured |
-| `site/` | **Generated** static output (committed by Action) |
+| `site/` | **Generated** static output (source of files pushed remotely) |
 | `site/index.html` | Page |
 | `site/images/` | Resized JPEGs |
 | `site/assets/site.css`, `site/assets/site.js` | Styles / scroll-in motion |
 | `site/data.json` | Build snapshot for debugging |
 | `requirements.txt` | `Pillow`, `requests` |
 | `README.md` | Human setup guide |
+| `ARCHITECTURE.md` | This file — planner contract |
 
 ## Invariants for planners
 
 1. **Do not** add a server or Google service-account flow unless explicitly requested — template is public-link based.
 2. Spreadsheet schema above is the contract; column renames need matching aliases in `scripts/build.py` (`process_rows` / `normalize_key`).
 3. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term.
-4. After content or schema-driven template changes, the Action must be run again to refresh `site/`.
+4. After content changes, the Action must run again — that rebuild **and** re-pushes to the destination website repo.
 5. Demo mode: empty/`REPLACE_*` `spreadsheet_id` → `sample/content.csv` placeholders; real deploys need a real sheet id + public Drive files.
-6. Pages: repo Settings → Pages → Source **GitHub Actions** (workflow deploys on `main`).
+6. **Live hosting is the destination repo**, not (primarily) this content repo’s Pages. Do not assume same-repo `actions/deploy-pages` is the production path.
+7. Cross-repo push requires `DEPLOY_TOKEN`; never commit PATs. Do not rely on default `GITHUB_TOKEN` for destination writes.
+8. When planning multi-site templates, call out `deploy_path` / overwrite risk explicitly.
 
 ## Typical change recipes
 
@@ -168,6 +212,7 @@ Env wins over `config.json` when set.
 | Visual redesign | CSS/HTML/JS strings inside `scripts/build.py` (`write_assets`, `render_html`) |
 | Different sheet / brand | `config.json` or Actions vars — then re-run Action |
 | Image size/quality | `image_max_width` / `image_quality` — then re-run Action |
+| Point at host website repo | `deploy_repo`, `deploy_branch`, `deploy_path` + secret `DEPLOY_TOKEN` |
 | Rebuild cadence | `.github/workflows/build.yml` `on.schedule` / `workflow_dispatch` |
 
 ## Local build
@@ -178,4 +223,4 @@ python scripts/build.py          # uses config.json; sample if id unset/REPLACE_
 USE_SAMPLE=1 python scripts/build.py
 ```
 
-Open `site/index.html`.
+Open `site/index.html`. Remote push happens only in GitHub Actions when deploy is configured.
