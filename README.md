@@ -133,7 +133,8 @@ Demo mode if sheet id is unset/`REPLACE_*`. Open `site/index.html`.
 ## Flow
 
 ```text
-Google Drive + Google Sheet
+Google Drive + Google Sheet (button / Apps Script)
+        → repository_dispatch (rebuild-site)
         → content repo Action (build site/)
         → push to destination website repo
         → GitHub Pages (destination)
