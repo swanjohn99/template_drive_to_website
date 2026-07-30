@@ -12,6 +12,7 @@ It defines:
 - Drive + Sheet → GitHub Action → static `site/` data flow
 - **Two-repo hosting:** content/build repo vs destination public website repo
 - **Two PATs:** `GH_PAT` in Apps Script (Actions write on content repo); `DEPLOY_TOKEN` Actions secret (Contents write on destination)
+- Optional `commit_site_locally` defaults off; destination deploy must not be blocked by local site commits
 - Google Spreadsheet column schema and sharing rules
 - `config.json` / env / secrets overrides
 - What is generated vs source of truth
