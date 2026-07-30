@@ -6,10 +6,12 @@
  *   GH_PAT          – fine-grained PAT with Actions: Read and write on the CONTENT repo
  *   GH_OWNER        – GitHub user/org that owns the content repo (e.g. swanjohn99)
  *   GH_REPO         – content repo name (e.g. my-site-content)
- *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
+ *   GH_EVENT_TYPE       – optional, default rebuild-site (must match workflow repository_dispatch types)
+ *   CONTENT_SHEET_NAME  – optional, default "your website content" (tab with site rows)
  */
 
 var DEFAULT_EVENT_TYPE = 'rebuild-site';
+var CONTENT_SHEET_NAME = 'your website content';
 
 /**
  * Custom menu: Site → Publish website
@@ -42,7 +44,17 @@ function publishWebsite() {
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getActiveSheet();
+  var sheetName = props.getProperty('CONTENT_SHEET_NAME') || CONTENT_SHEET_NAME;
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    ui.alert(
+      'Sheet tab not found',
+      'Create a tab named "' + sheetName + '" with your site rows (title, description, image, …).\n' +
+        'Or set CONTENT_SHEET_NAME in Script properties to match your tab name.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
   var clientPayload = {
     source: 'google-sheets',
     spreadsheet_id: ss.getId(),
