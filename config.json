@@ -9,5 +9,5 @@
   "deploy_repo": "",
   "deploy_branch": "main",
   "deploy_path": ".",
-  "commit_site_locally": true
+  "commit_site_locally": false
 }

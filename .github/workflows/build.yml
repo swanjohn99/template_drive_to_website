@@ -29,6 +29,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Needed so optional local site commits can rebase/push cleanly
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -60,7 +63,8 @@ jobs:
           repo = os.environ.get("DEPLOY_REPO") or cfg.get("deploy_repo") or ""
           branch = os.environ.get("DEPLOY_BRANCH") or cfg.get("deploy_branch") or "main"
           path = os.environ.get("DEPLOY_PATH") or cfg.get("deploy_path") or "."
-          local = cfg.get("commit_site_locally", True)
+          # Default false: live site is the destination repo; local commit is optional preview only.
+          local = cfg.get("commit_site_locally", False)
           if isinstance(local, str):
               local = local.lower() in ("1", "true", "yes")
           def set_out(k, v):
@@ -78,19 +82,7 @@ jobs:
           DEPLOY_BRANCH: ${{ vars.DEPLOY_BRANCH }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
 
-      - name: Commit site output to this repo
-        if: steps.cfg.outputs.commit_local == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site
-          if git diff --staged --quiet; then
-            echo "No local site changes"
-          else
-            git commit -m "chore: rebuild static site from Sheet + Drive"
-            git push
-          fi
-
+      # Deploy first so a local-commit push failure cannot block the live site publish.
       - name: Push site to destination website repo
         if: steps.cfg.outputs.do_deploy == 'true'
         env:
@@ -145,3 +137,43 @@ jobs:
             git commit -m "chore: publish site from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
             git push -u origin "HEAD:${DEPLOY_BRANCH}"
           fi
+
+      - name: Commit site output to this repo
+        if: steps.cfg.outputs.commit_local == 'true'
+        run: |
+          set -euo pipefail
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          case "$BRANCH" in
+            ""|HEAD) BRANCH="main" ;;
+          esac
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # repository_dispatch / some events can leave a detached HEAD — attach a branch
+          git checkout -B "$BRANCH"
+
+          git add -A site
+          if git diff --staged --quiet; then
+            echo "No local site changes"
+            exit 0
+          fi
+
+          git commit -m "chore: rebuild static site from Sheet + Drive"
+
+          # Explicit ref + rebase retry avoids "rejected (fetch first)" races
+          for attempt in 1 2 3 4; do
+            if git push origin "HEAD:${BRANCH}"; then
+              echo "Pushed site/ to origin/${BRANCH}"
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}); fetching and rebasing onto origin/${BRANCH}"
+            git fetch origin "$BRANCH"
+            git rebase "origin/${BRANCH}" || {
+              echo "::error::Could not rebase local site commit onto origin/${BRANCH}. Check branch protection / Actions write permission."
+              git rebase --abort || true
+              exit 1
+            }
+          done
+          echo "::error::Failed to push site/ after retries. Repo Settings → Actions → General → Workflow permissions must allow Read and write. Branch protection must allow github-actions[bot] pushes (or disable commit_site_locally)."
+          exit 1

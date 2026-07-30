@@ -43,9 +43,11 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
   "deploy_repo": "other-user/other-user.github.io",
   "deploy_branch": "main",
   "deploy_path": ".",
-  "commit_site_locally": true
+  "commit_site_locally": false
 }
 ```
+
+`commit_site_locally` is optional. Leave `false` unless you want the Action to also commit `site/` back into **this** content repo. The live site is the **destination** repo. If you enable it, content repo → **Settings → Actions → General → Workflow permissions → Read and write** must be on (and branch protection must allow Actions pushes).
 
 ### 4. Destination website repo
 

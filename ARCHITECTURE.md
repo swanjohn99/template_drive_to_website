@@ -182,7 +182,7 @@ Each Drive file must be **Anyone with the link → Viewer**.
 | `deploy_repo`     | Destination `owner/repo` (empty = skip remote push) |
 | `deploy_branch`   | Branch on destination (default `main`). **Must match a real branch name** on that repo (`main` / `master` / `gh-pages`), or the Action will create it when possible |
 | `deploy_path`     | Path inside destination to write files (default `.` = repo root) |
-| `commit_site_locally` | If `true`, also commit `site/` back to this content repo |
+| `commit_site_locally` | If `true`, also commit `site/` back to this content repo (default **`false`**). Optional preview only — must not block destination deploy |
 
 ### Secrets / variables (Actions)
 
@@ -218,7 +218,7 @@ Env / Actions vars win over `config.json` when set.
 | Path | Role |
 |------|------|
 | `scripts/build.py` | Builder only: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
-| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → optional local `site/` commit → push to destination |
+| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → **push destination first** → optional local `site/` commit |
 | `google-apps-script/Code.gs` | Sheet button/menu script (copy into Apps Script project) |
 | `GOOGLE_SHEETS_SETUP.md` | Step-by-step Sheet + Apps Script + button + PAT instructions |
 | `config.json` | Sheet + brand + **deploy_repo / branch / path** |

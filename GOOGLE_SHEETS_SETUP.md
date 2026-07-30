@@ -213,6 +213,7 @@ Also ensure:
 | Action runs but site empty / old | Sheet not public / wrong spreadsheet_id | Part A4–A5; check `config.json` |
 | Action fails on push | `DEPLOY_TOKEN` / `deploy_branch` | See README PAT section + destination `main` branch |
 | `Remote branch … not found` | Destination branch name mismatch | Set `deploy_branch` to the real branch on the website repo |
+| Fails at **Commit site output to this repo** | Local push rejected / read-only Actions token / branch protection | Set `commit_site_locally` to `false` (recommended), **or** content repo → Settings → Actions → General → Workflow permissions → **Read and write**. Live publish uses destination deploy, not this step |
 
 ---
 
