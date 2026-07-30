@@ -3,12 +3,15 @@
  * Full setup steps: ../GOOGLE_SHEETS_SETUP.md
  *
  * Script properties required:
- *   GH_PAT          – fine-grained PAT with Actions: Read and write on the CONTENT repo
- *   GH_OWNER        – GitHub user/org that owns the content repo (e.g. swanjohn99)
- *   GH_REPO         – content repo name (e.g. my-site-content)
- *   GH_EVENT_TYPE       – optional, default rebuild-site (must match workflow repository_dispatch types)
- *   CONTENT_SHEET_NAME  – optional, default "your website content" (tab with site rows)
+ *   GH_PAT          – fine-grained PAT from the **web hosting repo owner**
+ *                     (Actions: Read and write on that repo only — e.g. owner/owner.github.io)
+ *   GH_REPO         – full URL of the hosting repo, e.g. https://github.com/owner/owner.github.io
+ *                     (also accepts owner/repo)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
+ *   CONTENT_SHEET_NAME – optional, default "your website content" (tab with site rows)
+ *
+ * Legacy (optional if GH_REPO is only the repo name):
+ *   GH_OWNER – user/org segment when GH_REPO is not a full URL
  *
  * Drive layout for Import Picture URLs:
  *   Parent folder
@@ -56,42 +59,25 @@ function populatePictureUrls() {
   }
 
   if (urlColumnIndex === 0) {
-    ui.alert(
-      'Column not found',
-      'Need a header named "Picture URLs" or "image" in row 1.',
-      ui.ButtonSet.OK
+    throw new Error(
+      'Column "Picture URLs" / "image" not found. Add one of: ' +
+        PICTURE_URL_HEADERS.join(', ')
     );
-    return;
   }
 
   var file = DriveApp.getFileById(spreadsheet.getId());
   var parentFolders = file.getParents();
-
   if (!parentFolders.hasNext()) {
-    ui.alert(
-      'Folder not found',
-      'Spreadsheet parent folder not found. Put the sheet inside a Drive folder.',
-      ui.ButtonSet.OK
-    );
-    return;
+    throw new Error('Spreadsheet parent folder not found.');
   }
-
   var parentFolder = parentFolders.next();
   var folders = parentFolder.getFoldersByName('Pictures');
-
   if (!folders.hasNext()) {
-    ui.alert(
-      'Pictures folder not found',
-      'Create a folder named "Pictures" next to this spreadsheet in Drive.',
-      ui.ButtonSet.OK
-    );
-    return;
+    throw new Error('Folder "Pictures" not found.');
   }
-
   var picturesFolder = folders.next();
   var files = picturesFolder.getFiles();
   var urls = [];
-
   while (files.hasNext()) {
     var picture = files.next();
     if (picture.getMimeType().indexOf('image/') === 0) {
@@ -104,11 +90,10 @@ function populatePictureUrls() {
     return;
   }
 
-  var lastRow = Math.max(sheet.getLastRow(), 1);
-  var numRows = Math.max(sheet.getMaxRows() - 1, 1);
-  var columnValues = sheet.getRange(2, urlColumnIndex, numRows, 1).getValues();
-
-  var insertRow = lastRow + 1;
+  var columnValues = sheet
+    .getRange(2, urlColumnIndex, sheet.getMaxRows() - 1, 1)
+    .getValues();
+  var insertRow = 2;
   for (var i = 0; i < columnValues.length; i++) {
     if (columnValues[i][0] === '') {
       insertRow = i + 2;
@@ -124,20 +109,70 @@ function populatePictureUrls() {
 }
 
 /**
+ * Resolve {owner, repo} from GH_REPO (preferred: full URL) or legacy GH_OWNER + name.
+ */
+function resolveGithubRepo_(props) {
+  var raw = (props.getProperty('GH_REPO') || '').trim();
+  if (!raw) {
+    return null;
+  }
+
+  var owner = '';
+  var repo = '';
+
+  var urlMatch = raw.match(
+    /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/\s]+)\/([^\/\s?#]+)/i
+  );
+  if (urlMatch) {
+    owner = urlMatch[1];
+    repo = urlMatch[2].replace(/\.git$/i, '');
+  } else if (raw.indexOf('/') !== -1) {
+    var parts = raw.replace(/^\/+|\/+$/g, '').split('/');
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      owner = parts[0];
+      repo = parts[1].replace(/\.git$/i, '');
+    }
+  } else {
+    owner = props.getProperty('GH_OWNER') || '';
+    repo = raw;
+  }
+
+  if (!owner || !repo) {
+    return null;
+  }
+  return { owner: owner, repo: repo };
+}
+
+/**
  * Assign this function to a Drawing / button on the sheet.
  */
 function publishWebsite() {
   var ui = SpreadsheetApp.getUi();
   var props = PropertiesService.getScriptProperties();
   var token = props.getProperty('GH_PAT');
-  var owner = props.getProperty('GH_OWNER');
-  var repo = props.getProperty('GH_REPO');
+  var target = resolveGithubRepo_(props);
   var eventType = props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE;
 
-  if (!token || !owner || !repo) {
+  if (!token || !target) {
     ui.alert(
       'Missing script properties',
-      'Set GH_PAT, GH_OWNER, and GH_REPO in Project Settings → Script properties.\nSee GOOGLE_SHEETS_SETUP.md.',
+      'Set GH_PAT and GH_REPO in Project Settings → Script properties.\n' +
+        'GH_PAT = fine-grained PAT from the **hosting repo owner** (Actions R/W on that repo only).\n' +
+        'GH_REPO = full URL, e.g. https://github.com/owner/owner.github.io\n' +
+        'See GOOGLE_SHEETS_SETUP.md.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  var owner = target.owner;
+  var repo = target.repo;
+  var expected = owner + '.github.io';
+  if (repo.toLowerCase() !== expected.toLowerCase()) {
+    ui.alert(
+      'Wrong hosting repo',
+      'GH_REPO must be the web host "' + expected + '" (got "' + repo + '").\n' +
+        'Copy the template into that repo; there is no separate content repo.',
       ui.ButtonSet.OK
     );
     return;
@@ -163,7 +198,7 @@ function publishWebsite() {
     triggered_at: new Date().toISOString()
   };
 
-  // Inline CSV avoids configuring spreadsheet_id in the content repo.
+  // Inline CSV avoids configuring spreadsheet_id in the hosting repo.
   // GitHub dispatch body limit is ~64 KB; fall back to id+gid fetch when too large.
   var csvB64 = sheetDataToCsvBase64(sheet);
   if (csvB64) {
@@ -208,7 +243,7 @@ function publishWebsite() {
 }
 
 /**
- * Serialize the active sheet as base64 CSV, or null if empty / too large for dispatch.
+ * Serialize the sheet as base64 CSV, or null if empty / too large for dispatch.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @return {string|null}
  */
@@ -230,7 +265,6 @@ function sheetDataToCsvBase64(sheet) {
 
   var csv = lines.join('\n');
   var bytes = Utilities.newBlob(csv).getBytes();
-  // Leave headroom for JSON wrapper + other client_payload fields (~64 KB dispatch limit).
   if (bytes.length > 45000) {
     return null;
   }
@@ -243,14 +277,17 @@ function sheetDataToCsvBase64(sheet) {
  */
 function checkPublishConfig() {
   var props = PropertiesService.getScriptProperties();
-  var keys = ['GH_PAT', 'GH_OWNER', 'GH_REPO', 'GH_EVENT_TYPE'];
-  var lines = keys.map(function (k) {
-    var v = props.getProperty(k);
-    if (k === 'GH_PAT') {
-      return k + ': ' + (v ? 'set (' + v.length + ' chars)' : 'MISSING');
-    }
-    return k + ': ' + (v || 'MISSING');
-  });
+  var target = resolveGithubRepo_(props);
+  var sheetName = props.getProperty('CONTENT_SHEET_NAME') || CONTENT_SHEET_NAME;
+  var lines = [
+    'GH_PAT: ' + (props.getProperty('GH_PAT')
+      ? 'set (' + props.getProperty('GH_PAT').length + ' chars) — hosting repo owner'
+      : 'MISSING'),
+    'GH_REPO: ' + (props.getProperty('GH_REPO') || 'MISSING'),
+    'resolved: ' + (target ? target.owner + '/' + target.repo : 'MISSING'),
+    'GH_EVENT_TYPE: ' + (props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE + ' (default)'),
+    'CONTENT_SHEET_NAME: ' + sheetName
+  ];
   Logger.log(lines.join('\n'));
   SpreadsheetApp.getUi().alert(lines.join('\n'));
 }

@@ -8,18 +8,16 @@ Before planning or editing this repo (or a fork/template copy), read `ARCHITECTU
 
 It defines:
 
-- **Primary publish:** Google Sheet Apps Script button/menu → `repository_dispatch` (`rebuild-site`) → build `site/` → push to destination Pages repo
-- Drive + Sheet → GitHub Action → static `site/` data flow
-- **Two-repo hosting:** content/build repo vs destination public website repo
-- **Two PATs:** `GH_PAT` in Apps Script (Actions write on content repo); `DEPLOY_TOKEN` Actions secret (Contents write on destination)
-- Google Spreadsheet column schema and sharing rules
-- `config.json` / env / secrets overrides
-- What is generated vs source of truth
-- Overwrite risk when multiple content repos share one destination path
-- Safe change recipes
+- **Template → hosting repo:** copy this template into `owner.github.io`. That repo is the website host (build + Pages). No intermediate content repo.
+- **Primary publish:** Sheet Apps Script → `repository_dispatch` (`rebuild-site`) → build `site/` → publish to **`main` repo root** → Pages from **`main` / `/`**
+- **One PAT only:** `GH_PAT` = hosting **owner** fine-grained token, **that repo only**, Actions R/W. **Never `DEPLOY_TOKEN`.**
+- CI enforces naming (`owner.github.io`) and Pages (`main` + `/`) via `scripts/check_host_repo.py`
+- Spreadsheet schema + `your website content` tab; dispatch may send inline CSV
+- `config.json` / env / dispatch payload overrides (`spreadsheet_id` optional when publishing from the sheet)
+- Generated `site/` is gitignored; published files live at repo root
 
-Script source of truth for the button: `google-apps-script/Code.gs` (copied into the sheet’s Apps Script project).
+Script source: `google-apps-script/Code.gs` (copied into the sheet’s Apps Script project).
 
-Do not invent alternate sheet schemas, private Google API auth for reads, cron-as-primary-publish, or same-repo-only Pages as the production host unless the user asks.
+Do not invent alternate sheet schemas, private Google API auth for reads, cron-as-primary-publish, a second destination repo, or `DEPLOY_TOKEN` unless the user asks.
 Never tell users to commit PATs into the repo or to use Codespaces secrets for Actions.
 Keep `repository_dispatch` event type in sync with Apps Script (`rebuild-site` / `GH_EVENT_TYPE`).

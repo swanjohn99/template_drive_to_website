@@ -1,125 +1,58 @@
 # Drive + Sheets → static website
 
-People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this content repo**, which builds static files and **pushes them into a separate public website repo** (GitHub Pages host).
+**Copy this template into your web hosting repo** (`owner.github.io`). That repo builds and hosts the site. No second “content” repo. **No `DEPLOY_TOKEN`.**
 
-After Sheet/Drive updates: click **Publish website** on the sheet (or use **Import/Export → Publish website**).
+Sheet/Drive → Publish button → Action on `owner.github.io` → files on **`main` root** → GitHub Pages.
 
-**Setup for the sheet + button:** [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)  
-**Planners / Cursor:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
+**Setup:** [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · **Planners:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ## Setup
 
-### 1. Google Spreadsheet + Publish button
+### 1. Hosting repo
 
-Follow **[`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)** end-to-end (columns, public share, Apps Script, button, dispatch PAT).
+1. Create or use **`owner.github.io`**
+2. Copy this template into it (or use “Use this template” and rename to `owner.github.io`)
+3. **Settings → Pages → Deploy from a branch → Branch: `main` → Folder: `/` (root)**
+4. The Action checks naming + Pages settings and fails if wrong
 
-Header row:
+### 2. Google Spreadsheet + Publish button
 
-| title | description | image | section | order | published |
-|-------|-------------|-------|---------|-------|-----------|
-| Morning market | Vendors before sunrise | `DRIVE_FILE_ID_OR_URL` | gallery | 1 | yes |
+Follow [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md).
 
-- `image` — Drive file id or share URL
-- `section` — `featured` (hero) or `gallery`
-- Share sheet: **Anyone with the link → Viewer**
+- Tab name: **`your website content`**
+- Headers: `title`, `description`, `image`, `section`, `order`, `published`
+- Share sheet + Drive files: **Anyone with the link → Viewer**
 
-### 2. Google Drive pictures
-
-Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `image` column.
-
-### 3. Configure this (content) repo
-
-`config.json`:
+### 3. `config.json` (optional sheet id)
 
 ```json
 {
-  "spreadsheet_id": "YOUR_SHEET_ID",
+  "spreadsheet_id": "",
   "sheet_gid": "0",
   "site_title": "Your Brand",
   "site_tagline": "One short line",
   "image_max_width": 1400,
   "image_quality": 82,
-  "output_dir": "site",
-  "deploy_repo": "other-user/other-user.github.io",
-  "deploy_branch": "main",
-  "deploy_path": ".",
-  "commit_site_locally": true
+  "output_dir": "site"
 }
 ```
 
-### 4. Destination website repo
+Publish-from-sheet sends the sheet id (and often inline CSV). Set `spreadsheet_id` only for manual / push rebuilds.
 
-1. Other user’s public Pages repo (you are a **collaborator** with push to `main`)
-2. Pages enabled on **that** repo
-3. Create a **PAT** and store it as Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
+### 4. Owner fine-grained PAT (`GH_PAT`)
 
-Without `deploy_repo` + `DEPLOY_TOKEN`, the Action only builds (and optionally commits) `site/` locally.
+Created by the **owner** of `owner.github.io`:
 
-### 5. What is a PAT?
+1. Fine-grained PAT → **only** that hosting repo
+2. Permission: **Actions: Read and write** (+ Metadata)
+3. Store in Apps Script Script properties as `GH_PAT`
+4. `GH_REPO` = `https://github.com/owner/owner.github.io`
 
-**PAT** = **Personal Access Token**. A password-like string GitHub issues to *your* account so automation can act as you.
+Never commit the PAT. There is no deploy PAT / `DEPLOY_TOKEN`.
 
-Why it’s needed here:
+### 5. Publish
 
-- The Action runs in the **content** repo
-- It must `git push` into a **different** repo (the website host)
-- GitHub’s built-in `GITHUB_TOKEN` only works for the repo where the Action runs — it **cannot** push to someone else’s website repo
-- So you create a PAT on an account that **already has write access** to the destination (you, as collaborator), and give the Action that token as `DEPLOY_TOKEN`
-
-**Never** put a PAT in `config.json`, commit it, or paste it into issues/chat. Only store it as a GitHub Actions **secret**.
-
-#### Create a fine-grained PAT (preferred)
-
-1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**  
-   Direct link: https://github.com/settings/personal-access-tokens
-2. **Resource owner**: your user (the collaborator on the website repo)
-3. **Repository access**: Only select the **destination website repo** (not All repositories)
-4. **Permissions** — set only what is listed below, leave everything else **No access**
-5. Generate, copy the token once (starts with `github_pat_…`)
-
-##### Fine-grained permissions (scopes)
-
-| Permission | Access | Required? | Why |
-|------------|--------|-----------|-----|
-| **Contents** | **Read and write** | **Yes** | Clone the destination and `git push` built files |
-| **Metadata** | **Read-only** | Yes (GitHub usually adds this automatically) | Resolve the repository |
-
-Do **not** grant Administration, Actions, Secrets, Workflows, or other permissions. This template only needs to push static files.
-
-#### Classic PAT (alternative)
-
-1. **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**  
-   Direct link: https://github.com/settings/tokens
-2. Enable **only** the scope(s) below — nothing else
-3. Generate and copy once (starts with `ghp_…`)
-
-##### Classic scopes
-
-| Destination repo visibility | Scope to enable | Notes |
-|-----------------------------|-----------------|-------|
-| **Public** (typical Pages site) | `public_repo` | Enough to push to public repos |
-| **Private** | `repo` | Full repo scope; broader — prefer fine-grained instead |
-
-Do **not** enable `workflow`, `admin:org`, `delete_repo`, or other unrelated classic scopes.
-
-Fine-grained is safer because you lock the token to **one** destination repo. Classic `repo` / `public_repo` can reach every matching repo your account can access.
-
-#### Store it as `DEPLOY_TOKEN`
-
-1. Open **this content repo** on GitHub  
-2. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**  
-3. Name: `DEPLOY_TOKEN`  
-4. Value: paste the PAT → Save  
-
-The workflow clones/pushes the destination with that secret. If the token expires or is revoked, deploys fail until you create a new PAT and update the secret.
-
-### 6. Publish from the spreadsheet
-
-1. Edit Sheet / Drive content as needed  
-2. Click the **Publish website** button (or **Import/Export → Publish website**)  
-3. Confirm the run under the content repo **Actions** tab  
-
-Backup: Actions → **Build site from Google Drive + Sheets** → **Run workflow**.
+**Import/Export → Publish website** (or the sheet button) → Actions tab on the hosting repo → when green, open `https://owner.github.io/`.
 
 ## Local build
 
@@ -128,14 +61,15 @@ pip install -r requirements.txt
 python scripts/build.py
 ```
 
-Demo mode if sheet id is unset/`REPLACE_*`. Open `site/index.html`.
+Open `site/index.html`. `site/` is gitignored; CI publishes to repo root.
 
 ## Flow
 
 ```text
-Google Drive + Google Sheet (button / Apps Script)
+Google Drive + Sheet (Publish)
         → repository_dispatch (rebuild-site)
-        → content repo Action (build site/)
-        → push to destination website repo
-        → GitHub Pages (destination)
+        → Action on owner.github.io
+        → check name + Pages (main /)
+        → build site/ → copy to repo root → commit main
+        → GitHub Pages
 ```
