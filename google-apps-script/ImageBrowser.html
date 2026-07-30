@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <style>
+      :root {
+        --ink: #14201b;
+        --muted: #4b6156;
+        --line: #d5e0d8;
+        --bg: #f4f7f4;
+        --card: #fff;
+        --accent: #1f3d32;
+        --ok: #1b7f4a;
+        --warn: #9a5b12;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 13px/1.4 system-ui, -apple-system, Segoe UI, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+        padding: 12px;
+      }
+      h1 { margin: 0 0 4px; font-size: 15px; }
+      .meta { color: var(--muted); font-size: 12px; }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      button {
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--ink);
+        border-radius: 6px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      button:disabled { opacity: 0.5; cursor: wait; }
+      #status {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        min-height: 1.2em;
+      }
+      #status.error { color: #a11; }
+      #status.ok { color: var(--ok); }
+      main { padding: 10px 12px 24px; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 88px 1fr;
+        gap: 10px;
+        align-items: start;
+      }
+      .thumb-wrap {
+        width: 88px;
+        height: 88px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #e8eee9;
+      }
+      .thumb {
+        width: 88px;
+        height: 88px;
+        object-fit: cover;
+        display: block;
+      }
+      .thumb-fallback {
+        width: 88px;
+        height: 88px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+        padding: 6px;
+      }
+      .name {
+        font-weight: 600;
+        margin: 0 0 4px;
+        word-break: break-word;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        margin-bottom: 6px;
+      }
+      .badge.ok { background: #e5f6ec; color: var(--ok); }
+      .badge.warn { background: #fff1da; color: var(--warn); }
+      .url {
+        width: 100%;
+        font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px;
+        resize: vertical;
+        min-height: 52px;
+        background: #fafcfa;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .empty {
+        text-align: center;
+        color: var(--muted);
+        padding: 28px 12px;
+      }
+      .hint {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Drive images</h1>
+      <div class="meta" id="folderMeta">Loading…</div>
+      <div class="toolbar">
+        <button type="button" class="primary" id="btnRefresh">Refresh</button>
+        <button type="button" id="btnShareAll">Share all (anyone with link)</button>
+      </div>
+      <div id="status"></div>
+      <p class="hint">Click a sheet cell in the <strong>image</strong> column, then <strong>Paste into cell</strong> — or <strong>Copy URL</strong>.</p>
+    </header>
+    <main id="list"></main>
+
+    <script>
+      var latestItems = [];
+
+      document.getElementById('btnRefresh').addEventListener('click', reload);
+      document.getElementById('btnShareAll').addEventListener('click', shareAll);
+
+      function setStatus(msg, kind) {
+        var el = document.getElementById('status');
+        el.textContent = msg || '';
+        el.className = kind || '';
+      }
+
+      function reload() {
+        setStatus('Loading images…');
+        document.getElementById('list').innerHTML = '';
+        google.script.run
+          .withSuccessHandler(render)
+          .withFailureHandler(onError)
+          .listDriveImagesForBrowser();
+      }
+
+      function onError(err) {
+        setStatus(String(err && err.message ? err.message : err), 'error');
+      }
+
+      function render(data) {
+        latestItems = data.items || [];
+        document.getElementById('folderMeta').textContent =
+          data.folderName + ' · ' + latestItems.length + ' image(s)';
+        setStatus(
+          latestItems.length ? 'Ready' : 'No images in this folder',
+          latestItems.length ? 'ok' : ''
+        );
+
+        var list = document.getElementById('list');
+        list.innerHTML = '';
+        if (!latestItems.length) {
+          list.innerHTML = '<div class="empty">Upload pictures to the Drive folder, then Refresh.</div>';
+          return;
+        }
+
+        latestItems.forEach(function (item, idx) {
+          var card = document.createElement('article');
+          card.className = 'card';
+
+          var row = document.createElement('div');
+          row.className = 'row';
+
+          var thumbWrap = document.createElement('div');
+          thumbWrap.className = 'thumb-wrap';
+          var img = document.createElement('img');
+          img.className = 'thumb';
+          img.alt = '';
+          img.src = item.previewUrl;
+          var fallback = document.createElement('div');
+          fallback.className = 'thumb-fallback';
+          fallback.textContent = 'No preview';
+          img.onerror = function () {
+            img.style.display = 'none';
+            fallback.style.display = 'flex';
+          };
+          thumbWrap.appendChild(img);
+          thumbWrap.appendChild(fallback);
+
+          var body = document.createElement('div');
+          var name = document.createElement('p');
+          name.className = 'name';
+          name.textContent = item.name;
+
+          var badge = document.createElement('span');
+          badge.className = 'badge ' + (item.shared ? 'ok' : 'warn');
+          badge.textContent = item.shared ? 'Anyone with link' : 'Not public yet';
+
+          var ta = document.createElement('textarea');
+          ta.className = 'url';
+          ta.readOnly = true;
+          ta.id = 'url-' + idx;
+          ta.value = item.shareUrl;
+
+          var actions = document.createElement('div');
+          actions.className = 'actions';
+
+          var copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'primary';
+          copyBtn.textContent = 'Copy URL';
+          copyBtn.addEventListener('click', function () { copyUrl(idx); });
+
+          var pasteBtn = document.createElement('button');
+          pasteBtn.type = 'button';
+          pasteBtn.textContent = 'Paste into cell';
+          pasteBtn.addEventListener('click', function () { pasteUrl(idx); });
+
+          actions.appendChild(copyBtn);
+          actions.appendChild(pasteBtn);
+
+          if (!item.shared) {
+            var shareBtn = document.createElement('button');
+            shareBtn.type = 'button';
+            shareBtn.textContent = 'Make public';
+            shareBtn.addEventListener('click', function () { shareOne(item.id); });
+            actions.appendChild(shareBtn);
+          }
+
+          body.appendChild(name);
+          body.appendChild(badge);
+          body.appendChild(ta);
+          body.appendChild(actions);
+
+          row.appendChild(thumbWrap);
+          row.appendChild(body);
+          card.appendChild(row);
+          list.appendChild(card);
+        });
+      }
+
+      function copyUrl(idx) {
+        var el = document.getElementById('url-' + idx);
+        el.focus();
+        el.select();
+        el.setSelectionRange(0, el.value.length);
+        var ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch (e) {}
+        if (ok) {
+          setStatus('Copied to clipboard', 'ok');
+          return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(el.value).then(function () {
+            setStatus('Copied to clipboard', 'ok');
+          }).catch(function () {
+            setStatus('Select the URL and press Ctrl/Cmd+C', 'error');
+          });
+          return;
+        }
+        setStatus('Select the URL and press Ctrl/Cmd+C', 'error');
+      }
+
+      function pasteUrl(idx) {
+        var el = document.getElementById('url-' + idx);
+        setStatus('Pasting into active cell…');
+        google.script.run
+          .withSuccessHandler(function (res) {
+            setStatus('Pasted into row ' + res.row + ', column ' + res.column, 'ok');
+          })
+          .withFailureHandler(onError)
+          .pasteShareUrlIntoActiveCell(el.value);
+      }
+
+      function shareOne(fileId) {
+        setStatus('Updating sharing…');
+        google.script.run
+          .withSuccessHandler(function () {
+            setStatus('File is now Anyone with the link', 'ok');
+            reload();
+          })
+          .withFailureHandler(onError)
+          .shareDriveFileAnyoneWithLink(fileId);
+      }
+
+      function shareAll() {
+        setStatus('Sharing all images…');
+        google.script.run
+          .withSuccessHandler(function (res) {
+            setStatus('Updated ' + res.updated + ' of ' + res.total + ' file(s)', 'ok');
+            reload();
+          })
+          .withFailureHandler(onError)
+          .shareAllDriveImagesAnyoneWithLink();
+      }
+
+      reload();
+    </script>
+  </body>
+</html>

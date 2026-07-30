@@ -11,9 +11,10 @@ Architecture overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 ## What you will end up with
 
 1. A Google Spreadsheet (shared publicly for CSV export)
-2. Apps Script attached to that sheet
-3. A sheet menu **Site → Publish website** and/or a clickable button
-4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → pushes to the destination Pages repo
+2. Apps Script attached to that sheet (`Code.gs` + `ImageBrowser.html`)
+3. Sheet menu **Site → Browse Drive images** (previews + copyable share URLs) and **Site → Publish website**
+4. Optional drawing buttons for both actions
+5. Publish click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → pushes to the destination Pages repo
 
 You need **two different GitHub tokens** (do not reuse one for both jobs):
 
@@ -108,9 +109,11 @@ You will paste it into Apps Script Script properties as `GH_PAT` in Part C. Neve
 ### C1. Open Apps Script from the sheet
 
 1. In the spreadsheet: **Extensions → Apps Script**
-2. Delete any stub `myFunction` code
+2. Delete any stub `myFunction` code in `Code.gs`
 3. Paste the full contents of [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
-4. Click **Save** (disk icon). Project name e.g. `Publish website`
+4. Click **+** next to Files → **HTML** → name it exactly `ImageBrowser` (Apps Script adds `.html`)
+5. Paste the full contents of [`google-apps-script/ImageBrowser.html`](google-apps-script/ImageBrowser.html) into that file
+6. Click **Save**. Project name e.g. `Site publish`
 
 ### C2. Set Script properties
 
@@ -125,31 +128,40 @@ Add:
 | `GH_OWNER` | `swanjohn99` | Owner of the **content** repo |
 | `GH_REPO` | `my-site-content` | **Content** repo name only (not `owner/repo`) |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
+| `DRIVE_FOLDER_ID` | `1abc…FolderId` | Drive folder that holds uploaded pictures (Part E) |
 
 3. Save
 
 ### C3. Authorize the script
 
 1. In the Apps Script editor, select function `checkPublishConfig` → **Run**
-2. Choose your Google account → **Allow** the permissions (spreadsheet + external requests)
-3. You should see an alert that `GH_PAT` is set and owner/repo look correct
+2. Choose your Google account → **Allow** (spreadsheet, Drive, and external requests)
+3. You should see an alert that `GH_PAT` / owner / repo / `DRIVE_FOLDER_ID` look correct
 
 ### C4. Add the custom menu
 
 1. Close and reopen the spreadsheet (or refresh)
-2. After a few seconds a **Site** menu appears
-3. **Site → Publish website** runs the same publish function as the button
+2. After a few seconds a **Site** menu appears with:
+   - **Browse Drive images**
+   - **Publish website**
 
 If the menu is missing: Extensions → Apps Script → run `onOpen` once, then refresh the sheet.
 
 ---
 
-## Part D — Button on the sheet (drawing)
+## Part D — Buttons on the sheet (optional drawings)
+
+You can add one or both drawings:
+
+| Button label | Assign script name |
+|--------------|--------------------|
+| `Publish website` | `publishWebsite` |
+| `Browse Drive images` | `showDriveImageBrowser` |
 
 ### D1. Insert a drawing button
 
 1. In the spreadsheet: **Insert → Drawing**
-2. Draw a rectangle, add text e.g. `Publish website`
+2. Draw a rectangle, add the label text
 3. **Save and close**
 4. Position the drawing where editors can click it
 
@@ -157,19 +169,59 @@ If the menu is missing: Extensions → Apps Script → run `onOpen` once, then r
 
 1. Click the drawing once → click the **⋮** (three dots) on the drawing
 2. **Assign script**
-3. Type exactly: `publishWebsite` (no spaces, no `()`)
+3. Type the function name exactly (no spaces, no `()`)
 4. OK
 
-### D3. First click
+### D3. First Publish click
 
-1. Click the button
+1. Click **Publish website**
 2. Google may ask to authorize again — allow
 3. Success alert: **Publish started** + link to GitHub Actions  
 4. Failure alert: shows HTTP code/body (bad token, wrong repo, missing Actions permission, etc.)
 
 ---
 
-## Part E — Content repo must accept the event
+## Part E — Browse Drive images (previews + copy URLs)
+
+Editors upload pictures to one Drive folder. The sheet sidebar lists them with thumbnails and share URLs so you can paste into the `image` column.
+
+### G1. Create / pick the upload folder
+
+1. In [Google Drive](https://drive.google.com), create a folder e.g. `Site photos`
+2. Open the folder → copy its id from the URL:
+
+`https://drive.google.com/drive/folders/FOLDER_ID`
+
+3. Put `FOLDER_ID` in Apps Script Script property `DRIVE_FOLDER_ID` (Part C2)
+4. Upload JPG/PNG/WebP (etc.) images into that folder
+
+Recommended: share the **folder** as **Anyone with the link → Viewer** so new uploads are easier to publish. The sidebar can also set per-file sharing.
+
+### G2. Open the browser
+
+1. Refresh the spreadsheet so the **Site** menu loads
+2. **Site → Browse Drive images** (or click a drawing assigned to `showDriveImageBrowser`)
+3. Sidebar shows each image: thumbnail, name, share URL, public/private badge
+
+### G3. Copy or paste into the sheet
+
+1. Click the cell in the **`image`** column for that row
+2. In the sidebar, either:
+   - **Copy URL** → paste into the cell, or
+   - **Paste into cell** (writes the share URL into the active cell)
+3. If the badge says **Not public yet**, click **Make public** (or **Share all**) so the GitHub Action can download the file
+4. Fill `title` / `description` / `section` / `order` / `published` as usual
+5. **Site → Publish website** when ready
+
+Share URL format used:
+
+`https://drive.google.com/file/d/FILE_ID/view?usp=sharing`
+
+(The build script accepts this and extracts the file id.)
+
+---
+
+## Part F — Content repo must accept the event
 
 Confirm `.github/workflows/build.yml` includes:
 
@@ -191,7 +243,7 @@ Also ensure:
 
 ---
 
-## Part F — End-to-end test
+## Part G — End-to-end test
 
 1. Edit a cell in the sheet → save
 2. Click **Publish website** (button or Site menu)
@@ -209,7 +261,11 @@ Also ensure:
 | Apps Script `404` | Wrong `GH_OWNER` / `GH_REPO` | Use content repo, not website repo |
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
-| Button does nothing | Script name typo | Assign `publishWebsite` exactly |
+| Button does nothing | Script name typo | Assign `publishWebsite` or `showDriveImageBrowser` exactly |
+| Browse images: missing folder | `DRIVE_FOLDER_ID` unset / wrong | Part E |
+| Browse images: empty list | No image files in folder | Upload JPG/PNG/etc., then Refresh |
+| Browse images: preview broken | Private file / Drive thumbnail delay | Still use Copy URL; click Make public; Refresh |
+| Paste into cell writes wrong place | Wrong cell selected | Click the target `image` cell first |
 | Action runs but site empty / old | Sheet not public / wrong spreadsheet_id | Part A4–A5; check `config.json` |
 | Action fails on push | `DEPLOY_TOKEN` / `deploy_branch` | See README PAT section + destination `main` branch |
 | `Remote branch … not found` | Destination branch name mismatch | Set `deploy_branch` to the real branch on the website repo |

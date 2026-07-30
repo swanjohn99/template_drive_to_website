@@ -1,28 +1,31 @@
 /**
- * Copy this into the spreadsheet's Apps Script project.
- * Full setup steps: ../GOOGLE_SHEETS_SETUP.md
+ * Copy into the spreadsheet's Apps Script project (with ImageBrowser.html).
+ * Full setup: ../GOOGLE_SHEETS_SETUP.md
  *
- * Script properties required:
- *   GH_PAT          – fine-grained PAT with Actions: Read and write on the CONTENT repo
- *   GH_OWNER        – GitHub user/org that owns the content repo (e.g. swanjohn99)
- *   GH_REPO         – content repo name (e.g. my-site-content)
- *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
+ * Script properties:
+ *   GH_PAT          – fine-grained PAT, Actions: Read and write on CONTENT repo
+ *   GH_OWNER        – GitHub user/org of the content repo
+ *   GH_REPO         – content repo name
+ *   GH_EVENT_TYPE   – optional, default rebuild-site
+ *   DRIVE_FOLDER_ID – Google Drive folder id where pictures are uploaded
  */
 
 var DEFAULT_EVENT_TYPE = 'rebuild-site';
+var IMAGE_MIME_PREFIX = 'image/';
 
 /**
- * Custom menu: Site → Publish website
+ * Custom menu
  */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Site')
+    .addItem('Browse Drive images', 'showDriveImageBrowser')
     .addItem('Publish website', 'publishWebsite')
     .addToUi();
 }
 
 /**
- * Assign this function to a Drawing / button on the sheet.
+ * Assign to a Drawing / button: publishWebsite
  */
 function publishWebsite() {
   var ui = SpreadsheetApp.getUi();
@@ -84,12 +87,131 @@ function publishWebsite() {
 }
 
 /**
- * One-time helper: run from the Apps Script editor to verify properties exist.
- * Does not print the token.
+ * Assign to a Drawing / button: showDriveImageBrowser
+ * Opens a sidebar: thumbnails + share URLs to copy into the image column.
+ */
+function showDriveImageBrowser() {
+  var folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  if (!folderId) {
+    SpreadsheetApp.getUi().alert(
+      'Missing DRIVE_FOLDER_ID',
+      'Set Script property DRIVE_FOLDER_ID to your public (or shared) Drive folder id.\n' +
+        'Folder URL looks like: https://drive.google.com/drive/folders/FOLDER_ID\n' +
+        'See GOOGLE_SHEETS_SETUP.md Part E.',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    return;
+  }
+
+  var html = HtmlService.createHtmlOutputFromFile('ImageBrowser')
+    .setTitle('Drive images')
+    .setWidth(360);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Called from ImageBrowser.html via google.script.run.
+ * Returns [{id, name, shareUrl, fileIdUrl, previewUrl, shared}...]
+ */
+function listDriveImagesForBrowser() {
+  var folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  if (!folderId) {
+    throw new Error('Script property DRIVE_FOLDER_ID is not set.');
+  }
+
+  var folder;
+  try {
+    folder = DriveApp.getFolderById(folderId);
+  } catch (err) {
+    throw new Error('Cannot open folder ' + folderId + '. Check the id and that you can access it. ' + err);
+  }
+
+  var files = folder.getFiles();
+  var items = [];
+  while (files.hasNext()) {
+    var file = files.next();
+    var mime = file.getMimeType() || '';
+    if (mime.indexOf(IMAGE_MIME_PREFIX) !== 0) {
+      continue;
+    }
+    var id = file.getId();
+    items.push({
+      id: id,
+      name: file.getName(),
+      mime: mime,
+      shareUrl: 'https://drive.google.com/file/d/' + id + '/view?usp=sharing',
+      fileIdUrl: id,
+      previewUrl: 'https://drive.google.com/thumbnail?id=' + id + '&sz=w240',
+      shared: isAnyoneWithLink(file)
+    });
+  }
+
+  items.sort(function (a, b) {
+    return a.name.localeCompare(b.name);
+  });
+  return {
+    folderId: folderId,
+    folderName: folder.getName(),
+    count: items.length,
+    items: items
+  };
+}
+
+/**
+ * Make one file Anyone with the link → Viewer (so GitHub Action can download it).
+ */
+function shareDriveFileAnyoneWithLink(fileId) {
+  var file = DriveApp.getFileById(fileId);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return {
+    id: fileId,
+    shared: true,
+    shareUrl: 'https://drive.google.com/file/d/' + fileId + '/view?usp=sharing'
+  };
+}
+
+/**
+ * Make every image in the configured folder Anyone with the link → Viewer.
+ */
+function shareAllDriveImagesAnyoneWithLink() {
+  var data = listDriveImagesForBrowser();
+  var updated = 0;
+  data.items.forEach(function (item) {
+    if (!item.shared) {
+      shareDriveFileAnyoneWithLink(item.id);
+      updated++;
+    }
+  });
+  return { updated: updated, total: data.count };
+}
+
+function isAnyoneWithLink(file) {
+  try {
+    var access = file.getSharingAccess();
+    return (
+      access === DriveApp.Access.ANYONE_WITH_LINK ||
+      access === DriveApp.Access.ANYONE
+    );
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Paste the share URL into the active cell (or image column hint).
+ */
+function pasteShareUrlIntoActiveCell(shareUrl) {
+  var cell = SpreadsheetApp.getActiveSpreadsheet().getActiveCell();
+  cell.setValue(shareUrl);
+  return { row: cell.getRow(), column: cell.getColumn(), value: shareUrl };
+}
+
+/**
+ * One-time helper: run from the Apps Script editor to verify properties.
  */
 function checkPublishConfig() {
   var props = PropertiesService.getScriptProperties();
-  var keys = ['GH_PAT', 'GH_OWNER', 'GH_REPO', 'GH_EVENT_TYPE'];
+  var keys = ['GH_PAT', 'GH_OWNER', 'GH_REPO', 'GH_EVENT_TYPE', 'DRIVE_FOLDER_ID'];
   var lines = keys.map(function (k) {
     var v = props.getProperty(k);
     if (k === 'GH_PAT') {

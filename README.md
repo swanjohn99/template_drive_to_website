@@ -11,7 +11,12 @@ After Sheet/Drive updates: click **Publish website** on the sheet (or use **Site
 
 ### 1. Google Spreadsheet + Publish button
 
-Follow **[`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)** end-to-end (columns, public share, Apps Script, button, dispatch PAT).
+Follow **[`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)** end-to-end (columns, public share, Apps Script, Drive image browser, publish button, dispatch PAT).
+
+Menu after setup:
+
+- **Site → Browse Drive images** — thumbnails + share URLs to paste into `image`
+- **Site → Publish website** — trigger the GitHub Action
 
 Header row:
 

@@ -16,7 +16,7 @@ Static website generated from:
 
 No runtime backend. No Google API keys for Sheet/Drive read. Public share links only.
 
-Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · script source: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
+Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · scripts: [`google-apps-script/`](google-apps-script/) (`Code.gs`, `ImageBrowser.html`)
 
 ## Two-repo model
 
@@ -31,8 +31,8 @@ The person running the content repo is a **collaborator with write access to `ma
 
 ```text
 Editors / uploaders
-  ├─ Google Drive  (images, Anyone-with-link)
-  └─ Google Sheet  (rows + Apps Script button)
+  ├─ Google Drive folder (images) ── Site → Browse Drive images (copy URLs)
+  └─ Google Sheet  (rows + Apps Script button/menu)
            │
            │  click "Publish website"
            ▼
@@ -219,8 +219,9 @@ Env / Actions vars win over `config.json` when set.
 |------|------|
 | `scripts/build.py` | Builder only: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
 | `.github/workflows/build.yml` | CI: `repository_dispatch` / build → optional local `site/` commit → push to destination |
-| `google-apps-script/Code.gs` | Sheet button/menu script (copy into Apps Script project) |
-| `GOOGLE_SHEETS_SETUP.md` | Step-by-step Sheet + Apps Script + button + PAT instructions |
+| `google-apps-script/Code.gs` | Sheet menu/button scripts: publish + Drive image browser API |
+| `google-apps-script/ImageBrowser.html` | Sidebar UI: thumbnails, share URLs, copy/paste into `image` cells |
+| `GOOGLE_SHEETS_SETUP.md` | Step-by-step Sheet + Apps Script + button + Drive browser + PAT instructions |
 | `config.json` | Sheet + brand + **deploy_repo / branch / path** |
 | `sample/content.csv` | Demo sheet shape when no real id configured |
 | `site/` | **Generated** static output (source of files pushed remotely) |
@@ -253,7 +254,7 @@ Env / Actions vars win over `config.json` when set.
 | Different sheet / brand | `config.json` or Actions vars — then publish from Sheet |
 | Image size/quality | `image_max_width` / `image_quality` — then publish from Sheet |
 | Point at host website repo | `deploy_repo`, `deploy_branch`, `deploy_path` + secret `DEPLOY_TOKEN` |
-| Change publish button / Apps Script | `google-apps-script/Code.gs` + `GOOGLE_SHEETS_SETUP.md` + keep `repository_dispatch` types in sync |
+| Change publish / image browser Apps Script | `google-apps-script/Code.gs` + `ImageBrowser.html` + `GOOGLE_SHEETS_SETUP.md` |
 | Dispatch event name | Workflow `repository_dispatch.types` **and** Apps Script `GH_EVENT_TYPE` / `rebuild-site` together |
 
 ## Local build

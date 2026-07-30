@@ -18,7 +18,8 @@ It defines:
 - Overwrite risk when multiple content repos share one destination path
 - Safe change recipes
 
-Script source of truth for the button: `google-apps-script/Code.gs` (copied into the sheet’s Apps Script project).
+Script source of truth for the button/menu: `google-apps-script/Code.gs` and `ImageBrowser.html` (copied into the sheet’s Apps Script project).
+`DRIVE_FOLDER_ID` script property powers **Site → Browse Drive images** (previews + copyable share URLs for the `image` column).
 
 Do not invent alternate sheet schemas, private Google API auth for reads, cron-as-primary-publish, or same-repo-only Pages as the production host unless the user asks.
 Never tell users to commit PATs into the repo or to use Codespaces secrets for Actions.
