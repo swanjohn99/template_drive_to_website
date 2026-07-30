@@ -59,7 +59,9 @@ Editors / uploaders
 |-------|-----------|-----------------|-------------------------|
 | **Dispatch** (`GH_PAT`) | Apps Script **Script properties** | **This** repo | **Actions: Read and write** (+ Metadata R) |
 
-Deploy uses the workflow’s built-in `GITHUB_TOKEN` with `pages: write` and `id-token: write`. **No `DEPLOY_TOKEN`.** Never commit `GH_PAT`.
+`GH_PAT` may be created by a **collaborator** (common). Script property `GH_REPO_OWNER` is the user/org segment of the repo URL (`github.com/OWNER/REPO`), not the person who made the token. Legacy alias: `GH_OWNER`.
+
+Deploy uses the workflow’s built-in `GITHUB_TOKEN` with `pages: write` and `id-token: write`. Never commit `GH_PAT`.
 
 ## Rebuild triggers
 
@@ -200,7 +202,7 @@ Env / Actions vars win over `config.json` when set.
 5. After content changes, publish from the sheet — that rebuild **and** redeploys GitHub Pages on this repo.
 6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` → `sample/content.csv` placeholders; real deploys need a real sheet id + public Drive files.
 7. **Live hosting is this repo’s GitHub Pages** (Actions artifact), not a second destination repo.
-8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions). Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
+8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions; often a collaborator’s token). Pair with `GH_REPO_OWNER` + `GH_REPO` (URL path). Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
 
 ## Typical change recipes
 

@@ -11,7 +11,7 @@ It defines:
 - **Primary publish:** Google Sheet Apps Script button/menu → `repository_dispatch` (`rebuild-site`) → build `site/` → deploy GitHub Pages on **this same repo**
 - Drive + Sheet → GitHub Action → static `site/` data flow
 - **One-repo hosting:** build + Pages artifact deploy in this repo (root URL via `username.github.io`)
-- **One PAT:** `GH_PAT` in Apps Script (Actions write on this repo); Pages deploy uses `GITHUB_TOKEN` (`pages` + `id-token`)
+- **One PAT:** `GH_PAT` in Apps Script (Actions write on this repo; often a collaborator’s token) + `GH_REPO_OWNER` / `GH_REPO` for the URL path; Pages deploy uses `GITHUB_TOKEN` (`pages` + `id-token`)
 - Google Spreadsheet column schema and sharing rules
 - `config.json` / env / secrets overrides
 - What is generated vs source of truth (`site/` gitignored)

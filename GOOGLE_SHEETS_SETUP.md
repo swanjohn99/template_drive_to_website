@@ -15,13 +15,13 @@ Architecture overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 3. A sheet menu **Import/Export** (**Import Picture URLs**, **Publish website**) and/or a clickable button
 4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → deploys GitHub Pages on this repo
 
-You need **one** GitHub token:
+You need **one** GitHub token (often created by a collaborator who can start Actions):
 
 | Token | Where stored | Purpose |
 |-------|--------------|---------|
-| **Dispatch PAT** (`GH_PAT` in Apps Script) | Apps Script **Script properties** | Lets the sheet call GitHub to **start** the Action on **this** repo |
+| **`GH_PAT`** | Apps Script **Script properties** | Lets the sheet call GitHub to **start** the Action on **this** repo |
 
-Pages deploy uses the workflow `GITHUB_TOKEN` (`pages: write` + `id-token: write`). No `DEPLOY_TOKEN`.
+Pages deploy uses the workflow `GITHUB_TOKEN` (`pages: write` + `id-token: write`). No second token.
 
 ---
 
@@ -76,15 +76,17 @@ You should download/see CSV text, not a Google login HTML page. If you get HTML,
 
 ---
 
-## Part B — Dispatch PAT (for Apps Script → GitHub)
+## Part B — GitHub token to start the Action (`GH_PAT`)
 
-This token starts the workflow. It is **not** used for Pages deploy.
+This token only starts the workflow via `repository_dispatch`. Pages publish uses the Action’s built-in `GITHUB_TOKEN`.
+
+Create it on **any account that can start Actions on this repo** — often a collaborator/contributor, not necessarily the GitHub user/org that owns the repo in the URL.
 
 ### B1. Create a fine-grained PAT (preferred)
 
 1. Open https://github.com/settings/personal-access-tokens  
 2. **Generate new token** (fine-grained)
-3. **Resource owner**: your user (must be able to run Actions on **this** repo)
+3. **Resource owner**: the account creating the token (you / the collaborator)
 4. **Repository access**: **Only select this repo** (often `username.github.io`)
 5. Repository permissions:
 
@@ -122,9 +124,9 @@ Add:
 
 | Property | Example value | Notes |
 |----------|---------------|-------|
-| `GH_PAT` | `github_pat_…` | Dispatch PAT from Part B |
-| `GH_OWNER` | `swanjohn99` | Owner of **this** repo |
-| `GH_REPO` | `username.github.io` | **This** repo name only (not `owner/repo`) |
+| `GH_PAT` | `github_pat_…` | Token from Part B (collaborator OK) |
+| `GH_REPO_OWNER` | `swanjohn99` | User/org in the repo URL `github.com/THIS/repo` — **not** the person who made the PAT. Legacy alias: `GH_OWNER` |
+| `GH_REPO` | `username.github.io` | Repo name only (not `owner/repo`) |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
 
 3. Save
@@ -133,7 +135,7 @@ Add:
 
 1. In the Apps Script editor, select function `checkPublishConfig` → **Run**
 2. Choose your Google account → **Allow** the permissions (spreadsheet + external requests)
-3. You should see an alert that `GH_PAT` is set and owner/repo look correct
+3. You should see an alert that `GH_PAT` is set and repo owner/name look correct
 4. First run of **Import Picture URLs** also asks for Drive access — allow that too
 
 ### C4. Add the custom menu
@@ -212,7 +214,7 @@ Also ensure:
 
 1. Edit a cell in the sheet → save
 2. Click **Publish website** (button or Import/Export menu)
-3. Open `https://github.com/GH_OWNER/GH_REPO/actions`
+3. Open `https://github.com/GH_REPO_OWNER/GH_REPO/actions`
 4. Run **Build site from Google Drive + Sheets** should appear (event `repository_dispatch`)
 5. When green: open the Pages URL from the deploy job / Settings → Pages and refresh
 
@@ -222,8 +224,8 @@ Also ensure:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on this repo |
-| Apps Script `404` | Wrong `GH_OWNER` / `GH_REPO` | Use this repo’s owner + name |
+| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on this repo (collaborator account OK) |
+| Apps Script `404` | Wrong `GH_REPO_OWNER` / `GH_REPO` | Use the URL path (`github.com/OWNER/REPO`), not the PAT author’s username |
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
 | Button does nothing | Script name typo | Assign `publishWebsite` exactly |
@@ -235,7 +237,7 @@ Also ensure:
 
 ## Security notes
 
-- Store **dispatch** PAT only in Apps Script Script properties
+- Store `GH_PAT` only in Apps Script Script properties
 - Anyone who can edit the Apps Script project can read Script properties — limit editors
 - Spreadsheet “Anyone with the link” makes **content** public (required for CSV export without API keys)
 - Rotate PATs if leaked; revoke old tokens in GitHub settings

@@ -47,13 +47,23 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
 
 1. For a **root** site URL (`https://username.github.io/`), name this repo `username.github.io` (or the org equivalent)
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
-3. No deploy PAT / `DEPLOY_TOKEN` — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact
+3. No second token — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact
 
-### 5. Dispatch PAT (Apps Script only)
+### 5. GitHub token for the sheet (`GH_PAT`)
 
 **PAT** = **Personal Access Token**. Needed so the spreadsheet can start this repo’s Action (`repository_dispatch`).
 
-Create a fine-grained PAT with **Actions: Read and write** on **this** repo only. Store it in Apps Script Script properties as `GH_PAT` (see [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)).
+Create a fine-grained PAT with **Actions: Read and write** on **this** repo. Any collaborator who can start Actions can create it — that person is often not the GitHub user/org in the repo URL.
+
+In Apps Script Script properties set:
+
+| Property | Meaning |
+|----------|---------|
+| `GH_PAT` | The token above |
+| `GH_REPO_OWNER` | User/org in `github.com/THIS/repo` (not the PAT author). Legacy: `GH_OWNER` |
+| `GH_REPO` | Repo name only |
+
+Full steps: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md).
 
 **Never** put a PAT in `config.json`, commit it, or paste it into issues/chat.
 

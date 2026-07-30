@@ -4,8 +4,10 @@
  *
  * Script properties required:
  *   GH_PAT          – fine-grained PAT with Actions: Read and write on this repo
- *   GH_OWNER        – GitHub user/org that owns this repo (e.g. swanjohn99)
- *   GH_REPO         – this repo name (e.g. username.github.io)
+ *                     (create on any account that can start Actions — often a collaborator)
+ *   GH_REPO_OWNER   – user/org segment of the repo URL (github.com/THIS/repo), not the PAT author
+ *                     (legacy alias: GH_OWNER)
+ *   GH_REPO         – this repo name only (e.g. username.github.io)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
  *
  * Drive layout for Import Picture URLs:
@@ -123,18 +125,24 @@ function populatePictureUrls() {
 /**
  * Assign this function to a Drawing / button on the sheet.
  */
+function githubRepoOwner_(props) {
+  // URL path owner/org (github.com/OWNER/REPO) — not the person who created GH_PAT.
+  return props.getProperty('GH_REPO_OWNER') || props.getProperty('GH_OWNER');
+}
+
 function publishWebsite() {
   var ui = SpreadsheetApp.getUi();
   var props = PropertiesService.getScriptProperties();
   var token = props.getProperty('GH_PAT');
-  var owner = props.getProperty('GH_OWNER');
+  var owner = githubRepoOwner_(props);
   var repo = props.getProperty('GH_REPO');
   var eventType = props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE;
 
   if (!token || !owner || !repo) {
     ui.alert(
       'Missing script properties',
-      'Set GH_PAT, GH_OWNER, and GH_REPO in Project Settings → Script properties.\nSee GOOGLE_SHEETS_SETUP.md.',
+      'Set GH_PAT, GH_REPO_OWNER, and GH_REPO in Project Settings → Script properties.\n' +
+        '(GH_OWNER still works as a legacy alias for GH_REPO_OWNER.)\nSee GOOGLE_SHEETS_SETUP.md.',
       ui.ButtonSet.OK
     );
     return;
@@ -188,14 +196,19 @@ function publishWebsite() {
  */
 function checkPublishConfig() {
   var props = PropertiesService.getScriptProperties();
-  var keys = ['GH_PAT', 'GH_OWNER', 'GH_REPO', 'GH_EVENT_TYPE'];
-  var lines = keys.map(function (k) {
-    var v = props.getProperty(k);
-    if (k === 'GH_PAT') {
-      return k + ': ' + (v ? 'set (' + v.length + ' chars)' : 'MISSING');
-    }
-    return k + ': ' + (v || 'MISSING');
-  });
+  var owner = githubRepoOwner_(props);
+  var lines = [
+    'GH_PAT: ' + (props.getProperty('GH_PAT')
+      ? 'set (' + props.getProperty('GH_PAT').length + ' chars)'
+      : 'MISSING'),
+    'GH_REPO_OWNER: ' + (props.getProperty('GH_REPO_OWNER') ||
+      (props.getProperty('GH_OWNER')
+        ? props.getProperty('GH_OWNER') + ' (via legacy GH_OWNER)'
+        : 'MISSING')),
+    'resolved owner/org: ' + (owner || 'MISSING'),
+    'GH_REPO: ' + (props.getProperty('GH_REPO') || 'MISSING'),
+    'GH_EVENT_TYPE: ' + (props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE + ' (default)')
+  ];
   Logger.log(lines.join('\n'));
   SpreadsheetApp.getUi().alert(lines.join('\n'));
 }
