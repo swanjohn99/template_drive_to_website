@@ -3,9 +3,9 @@
  * Full setup steps: ../GOOGLE_SHEETS_SETUP.md
  *
  * Script properties required:
- *   GH_PAT          – fine-grained PAT with Actions: Read and write on the CONTENT repo
- *   GH_OWNER        – GitHub user/org that owns the content repo (e.g. swanjohn99)
- *   GH_REPO         – content repo name (e.g. my-site-content)
+ *   GH_PAT          – fine-grained PAT with Actions: Read and write on this repo
+ *   GH_OWNER        – GitHub user/org that owns this repo (e.g. swanjohn99)
+ *   GH_REPO         – this repo name (e.g. username.github.io)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
  *
  * Drive layout for Import Picture URLs:

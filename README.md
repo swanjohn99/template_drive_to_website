@@ -1,6 +1,6 @@
 # Drive + Sheets → static website
 
-People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this content repo**, which builds static files and **pushes them into a separate public website repo** (GitHub Pages host).
+People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this repo**, which builds static files and **deploys them with GitHub Pages** (same repo).
 
 After Sheet/Drive updates: click **Publish website** on the sheet (or use **Import/Export → Publish website**).
 
@@ -27,7 +27,7 @@ Header row:
 
 Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `image` column.
 
-### 3. Configure this (content) repo
+### 3. Configure this repo
 
 `config.json`:
 
@@ -39,85 +39,30 @@ Share files **Anyone with the link → Viewer**. Put file id/URL in the sheet `i
   "site_tagline": "One short line",
   "image_max_width": 1400,
   "image_quality": 82,
-  "output_dir": "site",
-  "deploy_repo": "other-user/other-user.github.io",
-  "deploy_branch": "main",
-  "deploy_path": ".",
-  "commit_site_locally": true
+  "output_dir": "site"
 }
 ```
 
-### 4. Destination website repo
+### 4. GitHub Pages (same repo)
 
-1. Other user’s public Pages repo (you are a **collaborator** with push to `main`)
-2. Pages enabled on **that** repo
-3. Create a **PAT** and store it as Actions secret `DEPLOY_TOKEN` in **this** content repo (see below)
+1. For a **root** site URL (`https://username.github.io/`), name this repo `username.github.io` (or the org equivalent)
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
+3. No deploy PAT / `DEPLOY_TOKEN` — the workflow uses `GITHUB_TOKEN` to publish the `site/` artifact
 
-Without `deploy_repo` + `DEPLOY_TOKEN`, the Action only builds (and optionally commits) `site/` locally.
+### 5. Dispatch PAT (Apps Script only)
 
-### 5. What is a PAT?
+**PAT** = **Personal Access Token**. Needed so the spreadsheet can start this repo’s Action (`repository_dispatch`).
 
-**PAT** = **Personal Access Token**. A password-like string GitHub issues to *your* account so automation can act as you.
+Create a fine-grained PAT with **Actions: Read and write** on **this** repo only. Store it in Apps Script Script properties as `GH_PAT` (see [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)).
 
-Why it’s needed here:
-
-- The Action runs in the **content** repo
-- It must `git push` into a **different** repo (the website host)
-- GitHub’s built-in `GITHUB_TOKEN` only works for the repo where the Action runs — it **cannot** push to someone else’s website repo
-- So you create a PAT on an account that **already has write access** to the destination (you, as collaborator), and give the Action that token as `DEPLOY_TOKEN`
-
-**Never** put a PAT in `config.json`, commit it, or paste it into issues/chat. Only store it as a GitHub Actions **secret**.
-
-#### Create a fine-grained PAT (preferred)
-
-1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**  
-   Direct link: https://github.com/settings/personal-access-tokens
-2. **Resource owner**: your user (the collaborator on the website repo)
-3. **Repository access**: Only select the **destination website repo** (not All repositories)
-4. **Permissions** — set only what is listed below, leave everything else **No access**
-5. Generate, copy the token once (starts with `github_pat_…`)
-
-##### Fine-grained permissions (scopes)
-
-| Permission | Access | Required? | Why |
-|------------|--------|-----------|-----|
-| **Contents** | **Read and write** | **Yes** | Clone the destination and `git push` built files |
-| **Metadata** | **Read-only** | Yes (GitHub usually adds this automatically) | Resolve the repository |
-
-Do **not** grant Administration, Actions, Secrets, Workflows, or other permissions. This template only needs to push static files.
-
-#### Classic PAT (alternative)
-
-1. **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**  
-   Direct link: https://github.com/settings/tokens
-2. Enable **only** the scope(s) below — nothing else
-3. Generate and copy once (starts with `ghp_…`)
-
-##### Classic scopes
-
-| Destination repo visibility | Scope to enable | Notes |
-|-----------------------------|-----------------|-------|
-| **Public** (typical Pages site) | `public_repo` | Enough to push to public repos |
-| **Private** | `repo` | Full repo scope; broader — prefer fine-grained instead |
-
-Do **not** enable `workflow`, `admin:org`, `delete_repo`, or other unrelated classic scopes.
-
-Fine-grained is safer because you lock the token to **one** destination repo. Classic `repo` / `public_repo` can reach every matching repo your account can access.
-
-#### Store it as `DEPLOY_TOKEN`
-
-1. Open **this content repo** on GitHub  
-2. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**  
-3. Name: `DEPLOY_TOKEN`  
-4. Value: paste the PAT → Save  
-
-The workflow clones/pushes the destination with that secret. If the token expires or is revoked, deploys fail until you create a new PAT and update the secret.
+**Never** put a PAT in `config.json`, commit it, or paste it into issues/chat.
 
 ### 6. Publish from the spreadsheet
 
 1. Edit Sheet / Drive content as needed  
 2. Click the **Publish website** button (or **Import/Export → Publish website**)  
-3. Confirm the run under the content repo **Actions** tab  
+3. Confirm the run under this repo’s **Actions** tab  
+4. When green, open the Pages URL (Actions → deploy job → environment URL, or Settings → Pages)
 
 Backup: Actions → **Build site from Google Drive + Sheets** → **Run workflow**.
 
@@ -128,14 +73,14 @@ pip install -r requirements.txt
 python scripts/build.py
 ```
 
-Demo mode if sheet id is unset/`REPLACE_*`. Open `site/index.html`.
+Demo mode if sheet id is unset/`REPLACE_*`. Open `site/index.html`. `site/` is gitignored.
 
 ## Flow
 
 ```text
 Google Drive + Google Sheet (button / Apps Script)
         → repository_dispatch (rebuild-site)
-        → content repo Action (build site/)
-        → push to destination website repo
-        → GitHub Pages (destination)
+        → this repo Action (build site/)
+        → upload Pages artifact → deploy-pages
+        → GitHub Pages (this repo)
 ```

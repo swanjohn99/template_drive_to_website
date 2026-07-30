@@ -9,25 +9,23 @@ Static website generated from:
 
 1. **Google Spreadsheet** (public) — page copy / metadata + **Publish** button (Apps Script)
 2. **Google Drive files** (public) — photos referenced by the sheet
-3. **GitHub Action in this (content) repo** — fetch → resize → write `site/`
-4. **Push generated files into a separate public website repo** — that repo is what GitHub Pages hosts
+3. **GitHub Action in this repo** — fetch → resize → write `site/`
+4. **GitHub Pages on this same repo** — Action uploads `site/` as a Pages artifact and deploys it
 
-**Primary publish path:** editor clicks a button (or **Import/Export → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys.
+**Primary publish path:** editor clicks a button (or **Import/Export → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys Pages.
 
 No runtime backend. No Google API keys for Sheet/Drive read. Public share links only.
 
 Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · script source: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
 
-## Two-repo model
+## One-repo model
 
-GitHub user/org sites are typically one primary public host (`username.github.io` or one designated Pages repo). This template assumes:
+Build and host live in **one** repository. For a root user/org URL (`https://username.github.io/`), name the repo `username.github.io` (or the org equivalent) and enable Pages with source **GitHub Actions**.
 
-| Repo | Role |
+| Piece | Role |
 |------|------|
-| **Content / build repo** (this template, or a copy) | Sheet/Drive wiring, tweaks, Action that builds `site/` |
-| **Destination website repo** (another user’s public host) | Receives generated static files; Pages serves that repo |
-
-The person running the content repo is a **collaborator with write access to `main`** (or the deploy branch) on the destination repo.
+| **This repo** | Sheet/Drive wiring, builder scripts, Action that builds `site/` and deploys Pages |
+| **GitHub Pages** | Serves the uploaded `site/` artifact at the repo’s Pages URL (root for `*.github.io` repos) |
 
 ```text
 Editors / uploaders
@@ -37,9 +35,9 @@ Editors / uploaders
            │  click "Publish website"
            ▼
   Apps Script  →  GitHub API repository_dispatch (event: rebuild-site)
-           │         (Script property GH_PAT — Actions write on CONTENT repo)
+           │         (Script property GH_PAT — Actions write on THIS repo)
            ▼
-  Content repo  GitHub Action (.github/workflows/build.yml)
+  This repo  GitHub Action (.github/workflows/build.yml)
            │
            ▼
   scripts/build.py
@@ -48,49 +46,20 @@ Editors / uploaders
       ├─ resize with Pillow → site/images/*.jpg
       └─ render site/index.html + assets + data.json
            │
-           ├─ optional: commit site/ in content repo (preview / history)
-           │
            ▼
-  Push site/ contents → destination website repo
-           │         (Actions secret DEPLOY_TOKEN — Contents write on DESTINATION)
+  upload-pages-artifact (path: site) → deploy-pages
+           │         (GITHUB_TOKEN — pages: write + id-token: write)
            ▼
-  GitHub Pages on the DESTINATION repo (public site)
+  GitHub Pages on THIS repo (public site)
 ```
 
-### Two PATs (do not conflate)
+### One PAT (dispatch only)
 
 | Token | Stored in | Repo it targets | Fine-grained permission |
 |-------|-----------|-----------------|-------------------------|
-| **Dispatch** (`GH_PAT`) | Apps Script **Script properties** | **Content** repo | **Actions: Read and write** (+ Metadata R) |
-| **Deploy** (`DEPLOY_TOKEN`) | Content repo Actions **secret** | **Destination** website repo | **Contents: Read and write** (+ Metadata R) |
+| **Dispatch** (`GH_PAT`) | Apps Script **Script properties** | **This** repo | **Actions: Read and write** (+ Metadata R) |
 
-**Default `GITHUB_TOKEN` cannot push to another repo.** Deploy needs secret `DEPLOY_TOKEN`.
-
-### What `DEPLOY_TOKEN` / PAT means
-
-**PAT** = **Personal Access Token** — a GitHub credential for a user account, used by CI instead of a password.
-
-| Piece | Meaning |
-|-------|---------|
-| Why | Action in content repo must push commits into a *different* destination repo |
-| Why not `GITHUB_TOKEN` | Scoped only to the repo running the workflow; no write access to other repos |
-| Who creates it | An account that is already a **collaborator with write** on the destination |
-| Where it lives | Content repo → Settings → Secrets → Actions → secret name `DEPLOY_TOKEN` |
-| Recommended type | Fine-grained PAT, single destination repo |
-| Permissions (fine-grained) | **Contents: Read and write**; **Metadata: Read-only** (auto). Nothing else |
-| Permissions (classic) | Public destination → `public_repo` only. Private → `repo` only. Prefer fine-grained |
-| Security | Never commit the token; rotate if leaked or expired |
-
-Human-oriented steps + full scope tables: `README.md` § “What is a PAT?”.
-
-### Multi-site warning
-
-
-Several content repos pushing into the **same** destination path will overwrite each other. Prefer:
-
-- one content repo → one destination path, or
-- different `deploy_path` subfolders per site, or
-- different destination repos
+Deploy uses the workflow’s built-in `GITHUB_TOKEN` with `pages: write` and `id-token: write`. **No `DEPLOY_TOKEN`.** Never commit `GH_PAT`.
 
 ## Rebuild triggers
 
@@ -101,7 +70,7 @@ Several content repos pushing into the **same** destination path will overwrite 
 | Manual `workflow_dispatch` | Backup from GitHub Actions UI |
 | Push to `main` touching build config/scripts | After template/code changes |
 
-After Sheet or Drive content changes, click **Publish website** in the sheet (do not rely on a schedule). That rebuild also re-pushes to the destination website repo when deploy is configured.
+After Sheet or Drive content changes, click **Publish website** in the sheet (do not rely on a schedule). That rebuild also redeploys GitHub Pages.
 
 ## Google Spreadsheet configuration
 
@@ -179,19 +148,11 @@ Each Drive file must be **Anyone with the link → Viewer**.
 | `image_max_width` | Resize max width px (default 1400) |
 | `image_quality`   | JPEG quality (default 82) |
 | `output_dir`      | Local build folder (default `site`) |
-| `deploy_repo`     | Destination `owner/repo` (empty = skip remote push) |
-| `deploy_branch`   | Branch on destination (default `main`). **Must match a real branch name** on that repo (`main` / `master` / `gh-pages`), or the Action will create it when possible |
-| `deploy_path`     | Path inside destination to write files (default `.` = repo root) |
-| `commit_site_locally` | If `true`, also commit `site/` back to this content repo |
 
 ### Secrets / variables (Actions)
 
 | Name | Kind | Maps to |
 |------|------|---------|
-| `DEPLOY_TOKEN` | **Secret** (required for remote deploy) | PAT: fine-grained Contents R/W (+ Metadata R) on destination; or classic `public_repo` / `repo` |
-| `DEPLOY_REPO` | Var/secret optional override | `deploy_repo` |
-| `DEPLOY_BRANCH` | Var optional | `deploy_branch` |
-| `DEPLOY_PATH` | Var optional | `deploy_path` |
 | `SPREADSHEET_ID` | Var/secret | `spreadsheet_id` |
 | `SPREADSHEET_URL` | Var/secret | parses id + optional `gid` |
 | `SHEET_GID` | Var | `sheet_gid` |
@@ -204,26 +165,24 @@ Each Drive file must be **Anyone with the link → Viewer**.
 
 Env / Actions vars win over `config.json` when set.
 
-### Destination website repo checklist
+### Pages hosting checklist
 
-1. Public repo that GitHub Pages serves (often `username.github.io`)
-2. Pages enabled on that repo (branch/`deploy_path` as configured)
-3. Content-repo operator added as collaborator with push to deploy branch
-4. Content repo secret `DEPLOY_TOKEN` = Personal Access Token with scopes below:
-   - Fine-grained (preferred): destination repo only → **Contents: Read and write**, **Metadata: Read-only**
-   - Classic: `public_repo` (public destination) or `repo` (private destination)
+1. Repo named for root URL if needed: `username.github.io` (or org equivalent)
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions**
+3. First successful workflow run creates the `github-pages` environment and publishes
+4. Live URL: `https://username.github.io/` for a user/org site repo; project repos use `https://username.github.io/repo-name/`
 
 ## Code map
 
 | Path | Role |
 |------|------|
 | `scripts/build.py` | Builder only: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
-| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → optional local `site/` commit → push to destination |
+| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → upload Pages artifact → deploy-pages |
 | `google-apps-script/Code.gs` | Sheet button/menu script (copy into Apps Script project) |
 | `GOOGLE_SHEETS_SETUP.md` | Step-by-step Sheet + Apps Script + button + PAT instructions |
-| `config.json` | Sheet + brand + **deploy_repo / branch / path** |
+| `config.json` | Sheet + brand settings |
 | `sample/content.csv` | Demo sheet shape when no real id configured |
-| `site/` | **Generated** static output (source of files pushed remotely) |
+| `site/` | **Generated** static output (gitignored; local preview + Pages artifact) |
 | `site/index.html` | Page |
 | `site/images/` | Resized JPEGs |
 | `site/assets/site.css`, `site/assets/site.js` | Styles / scroll-in motion |
@@ -237,12 +196,11 @@ Env / Actions vars win over `config.json` when set.
 1. **Do not** add a server or Google service-account flow for Sheet/Drive **reads** unless explicitly requested — reads stay public-link based.
 2. **Primary publish trigger is the Sheet Apps Script button** (`repository_dispatch` / `rebuild-site`), not cron.
 3. Spreadsheet schema above is the contract; column renames need matching aliases in `scripts/build.py` (`process_rows` / `normalize_key`).
-4. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term.
-5. After content changes, publish from the sheet — that rebuild **and** re-pushes to the destination website repo.
+4. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term. Do not commit `site/`.
+5. After content changes, publish from the sheet — that rebuild **and** redeploys GitHub Pages on this repo.
 6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` → `sample/content.csv` placeholders; real deploys need a real sheet id + public Drive files.
-7. **Live hosting is the destination repo**, not (primarily) this content repo’s Pages.
-8. **Two PATs**: `GH_PAT` (Apps Script → content repo Actions) and `DEPLOY_TOKEN` (Action → destination Contents). Never commit either. Never use Codespaces secrets for Actions.
-9. When planning multi-site templates, call out `deploy_path` / overwrite risk explicitly.
+7. **Live hosting is this repo’s GitHub Pages** (Actions artifact), not a second destination repo.
+8. **One PAT**: `GH_PAT` (Apps Script → this repo Actions). Deploy uses `GITHUB_TOKEN`. Never commit PATs. Never use Codespaces secrets for Actions.
 
 ## Typical change recipes
 
@@ -252,7 +210,7 @@ Env / Actions vars win over `config.json` when set.
 | Visual redesign | CSS/HTML/JS strings inside `scripts/build.py` (`write_assets`, `render_html`) |
 | Different sheet / brand | `config.json` or Actions vars — then publish from Sheet |
 | Image size/quality | `image_max_width` / `image_quality` — then publish from Sheet |
-| Point at host website repo | `deploy_repo`, `deploy_branch`, `deploy_path` + secret `DEPLOY_TOKEN` |
+| Enable / fix hosting | Repo Pages source = GitHub Actions; for root URL use `username.github.io` |
 | Change publish button / Apps Script | `google-apps-script/Code.gs` + `GOOGLE_SHEETS_SETUP.md` + keep `repository_dispatch` types in sync |
 | Dispatch event name | Workflow `repository_dispatch.types` **and** Apps Script `GH_EVENT_TYPE` / `rebuild-site` together |
 
@@ -264,4 +222,4 @@ python scripts/build.py          # uses config.json; sample if id unset/REPLACE_
 USE_SAMPLE=1 python scripts/build.py
 ```
 
-Open `site/index.html`. Remote push happens only in GitHub Actions when deploy is configured.
+Open `site/index.html`. Remote Pages deploy happens only in GitHub Actions.

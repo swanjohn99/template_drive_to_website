@@ -17,10 +17,12 @@ on:
       - "google-apps-script/**"
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: build-site
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -50,98 +52,21 @@ jobs:
           IMAGE_QUALITY: ${{ vars.IMAGE_QUALITY || '82' }}
         run: python scripts/build.py
 
-      - name: Read deploy config
-        id: cfg
-        run: |
-          python3 <<'PY'
-          import json, os
-          from pathlib import Path
-          cfg = json.loads(Path("config.json").read_text())
-          repo = os.environ.get("DEPLOY_REPO") or cfg.get("deploy_repo") or ""
-          branch = os.environ.get("DEPLOY_BRANCH") or cfg.get("deploy_branch") or "main"
-          path = os.environ.get("DEPLOY_PATH") or cfg.get("deploy_path") or "."
-          local = cfg.get("commit_site_locally", True)
-          if isinstance(local, str):
-              local = local.lower() in ("1", "true", "yes")
-          def set_out(k, v):
-              print(f"{k}={v}")
-              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-                  f.write(f"{k}={v}\n")
-          set_out("deploy_repo", repo.strip())
-          set_out("deploy_branch", branch.strip())
-          set_out("deploy_path", path.strip() or ".")
-          set_out("commit_local", "true" if local else "false")
-          set_out("do_deploy", "true" if repo.strip() else "false")
-          PY
-        env:
-          DEPLOY_REPO: ${{ vars.DEPLOY_REPO || secrets.DEPLOY_REPO }}
-          DEPLOY_BRANCH: ${{ vars.DEPLOY_BRANCH }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Commit site output to this repo
-        if: steps.cfg.outputs.commit_local == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site
-          if git diff --staged --quiet; then
-            echo "No local site changes"
-          else
-            git commit -m "chore: rebuild static site from Sheet + Drive"
-            git push
-          fi
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
 
-      - name: Push site to destination website repo
-        if: steps.cfg.outputs.do_deploy == 'true'
-        env:
-          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-          DEPLOY_REPO: ${{ steps.cfg.outputs.deploy_repo }}
-          DEPLOY_BRANCH: ${{ steps.cfg.outputs.deploy_branch }}
-          DEPLOY_PATH: ${{ steps.cfg.outputs.deploy_path }}
-        run: |
-          set -euo pipefail
-          if [ -z "${DEPLOY_TOKEN:-}" ]; then
-            echo "DEPLOY_TOKEN secret is required to push to ${DEPLOY_REPO}"
-            exit 1
-          fi
-          REPO_URL="https://x-access-token:${DEPLOY_TOKEN}@github.com/${DEPLOY_REPO}.git"
-          DEST_DIR="${RUNNER_TEMP}/dest-site"
-          rm -rf "$DEST_DIR"
-
-          # Avoid "Remote branch X not found in upstream origin"
-          if git ls-remote --heads "$REPO_URL" "refs/heads/${DEPLOY_BRANCH}" | grep -q .; then
-            echo "Cloning ${DEPLOY_REPO}@${DEPLOY_BRANCH}"
-            git clone --depth 1 --branch "$DEPLOY_BRANCH" "$REPO_URL" "$DEST_DIR"
-          elif git ls-remote --heads "$REPO_URL" | grep -q .; then
-            DEFAULT_REF="$(git ls-remote --symref "$REPO_URL" HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2; exit}')"
-            echo "Branch '${DEPLOY_BRANCH}' missing; cloning default '${DEFAULT_REF:-HEAD}' then creating ${DEPLOY_BRANCH}"
-            if [ -n "${DEFAULT_REF:-}" ]; then
-              git clone --depth 1 --branch "$DEFAULT_REF" "$REPO_URL" "$DEST_DIR"
-            else
-              git clone --depth 1 "$REPO_URL" "$DEST_DIR"
-            fi
-            git -C "$DEST_DIR" checkout -B "$DEPLOY_BRANCH"
-          else
-            echo "Destination has no branches yet; initializing ${DEPLOY_BRANCH}"
-            mkdir -p "$DEST_DIR"
-            git -C "$DEST_DIR" init -b "$DEPLOY_BRANCH"
-            git -C "$DEST_DIR" remote add origin "$REPO_URL"
-          fi
-
-          TARGET="$DEST_DIR"
-          if [ "$DEPLOY_PATH" != "." ] && [ -n "$DEPLOY_PATH" ]; then
-            TARGET="$DEST_DIR/$DEPLOY_PATH"
-            mkdir -p "$TARGET"
-          fi
-          find "$TARGET" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-          cp -a site/. "$TARGET/"
-          cd "$DEST_DIR"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --staged --quiet; then
-            echo "No destination changes"
-          else
-            git commit -m "chore: publish site from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
-            git push -u origin "HEAD:${DEPLOY_BRANCH}"
-          fi
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

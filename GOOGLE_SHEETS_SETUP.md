@@ -1,6 +1,6 @@
 # Google Spreadsheet + Apps Script setup
 
-Step-by-step: put content in a public Google Sheet, add a **Publish website** button, and have that button trigger the GitHub Action that builds static files and pushes them to the destination website repo.
+Step-by-step: put content in a public Google Sheet, add a **Publish website** button, and have that button trigger the GitHub Action that builds static files and deploys GitHub Pages on **this same repo**.
 
 Copy-paste script: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
 
@@ -13,14 +13,15 @@ Architecture overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 1. A Google Spreadsheet (shared publicly for CSV export)
 2. Apps Script attached to that sheet
 3. A sheet menu **Import/Export** (**Import Picture URLs**, **Publish website**) and/or a clickable button
-4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → pushes to the destination Pages repo
+4. Click → GitHub `repository_dispatch` (`rebuild-site`) → Action builds `site/` → deploys GitHub Pages on this repo
 
-You need **two different GitHub tokens** (do not reuse one for both jobs):
+You need **one** GitHub token:
 
 | Token | Where stored | Purpose |
 |-------|--------------|---------|
-| **Dispatch PAT** (`GH_PAT` in Apps Script) | Apps Script **Script properties** | Lets the sheet call GitHub to **start** the Action on the **content** repo |
-| **Deploy PAT** (`DEPLOY_TOKEN`) | Content repo → Actions **secret** | Lets the Action **push** built files to the **destination website** repo |
+| **Dispatch PAT** (`GH_PAT` in Apps Script) | Apps Script **Script properties** | Lets the sheet call GitHub to **start** the Action on **this** repo |
+
+Pages deploy uses the workflow `GITHUB_TOKEN` (`pages: write` + `id-token: write`). No `DEPLOY_TOKEN`.
 
 ---
 
@@ -63,7 +64,7 @@ Rules:
 
 `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
 
-Put `SPREADSHEET_ID` into the content repo `config.json` → `spreadsheet_id` (or Actions variable `SPREADSHEET_ID`).
+Put `SPREADSHEET_ID` into this repo’s `config.json` → `spreadsheet_id` (or Actions variable `SPREADSHEET_ID`).
 
 ### A5. Confirm CSV export works
 
@@ -77,14 +78,14 @@ You should download/see CSV text, not a Google login HTML page. If you get HTML,
 
 ## Part B — Dispatch PAT (for Apps Script → GitHub)
 
-This token starts the workflow. It is **not** `DEPLOY_TOKEN`.
+This token starts the workflow. It is **not** used for Pages deploy.
 
 ### B1. Create a fine-grained PAT (preferred)
 
 1. Open https://github.com/settings/personal-access-tokens  
 2. **Generate new token** (fine-grained)
-3. **Resource owner**: your user (must be able to run Actions on the **content** repo)
-4. **Repository access**: **Only select the content / build repo** (the template copy — not the website host)
+3. **Resource owner**: your user (must be able to run Actions on **this** repo)
+4. **Repository access**: **Only select this repo** (often `username.github.io`)
 5. Repository permissions:
 
 | Permission | Access |
@@ -95,7 +96,7 @@ This token starts the workflow. It is **not** `DEPLOY_TOKEN`.
 
 6. Generate → copy once (`github_pat_…`)
 
-Classic alternative: token with `repo` scope on an account that can administer Actions on the content repo (broader — prefer fine-grained).
+Classic alternative: token with `repo` scope on an account that can administer Actions on this repo (broader — prefer fine-grained).
 
 ### B2. Keep this token ready
 
@@ -122,8 +123,8 @@ Add:
 | Property | Example value | Notes |
 |----------|---------------|-------|
 | `GH_PAT` | `github_pat_…` | Dispatch PAT from Part B |
-| `GH_OWNER` | `swanjohn99` | Owner of the **content** repo |
-| `GH_REPO` | `my-site-content` | **Content** repo name only (not `owner/repo`) |
+| `GH_OWNER` | `swanjohn99` | Owner of **this** repo |
+| `GH_REPO` | `username.github.io` | **This** repo name only (not `owner/repo`) |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
 
 3. Save
@@ -185,7 +186,7 @@ Each image: **Share → Anyone with the link → Viewer**. Menu import appends D
 
 ---
 
-## Part E — Content repo must accept the event
+## Part E — This repo must accept the event and host Pages
 
 Confirm `.github/workflows/build.yml` includes:
 
@@ -201,9 +202,9 @@ on:
 Also ensure:
 
 1. `config.json` has the real `spreadsheet_id`
-2. `deploy_repo` / `deploy_branch` point at the website host
-3. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W on the **destination** repo)
-4. Actions are enabled on the content repo
+2. **Settings → Pages → Source: GitHub Actions**
+3. For a root URL, the repo is named `username.github.io` (or org equivalent)
+4. Actions are enabled on this repo
 
 ---
 
@@ -213,7 +214,7 @@ Also ensure:
 2. Click **Publish website** (button or Import/Export menu)
 3. Open `https://github.com/GH_OWNER/GH_REPO/actions`
 4. Run **Build site from Google Drive + Sheets** should appear (event `repository_dispatch`)
-5. When green: check the destination website repo for a new commit and refresh the live Pages URL
+5. When green: open the Pages URL from the deploy job / Settings → Pages and refresh
 
 ---
 
@@ -221,21 +222,20 @@ Also ensure:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on content repo |
-| Apps Script `404` | Wrong `GH_OWNER` / `GH_REPO` | Use content repo, not website repo |
+| Apps Script `401` / `403` | Bad/expired `GH_PAT` or wrong scopes | New fine-grained PAT with **Actions: Read and write** on this repo |
+| Apps Script `404` | Wrong `GH_OWNER` / `GH_REPO` | Use this repo’s owner + name |
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
 | Button does nothing | Script name typo | Assign `publishWebsite` exactly |
 | Action runs but site empty / old | Sheet not public / wrong spreadsheet_id | Part A4–A5; check `config.json` |
-| Action fails on push | `DEPLOY_TOKEN` / `deploy_branch` | See README PAT section + destination `main` branch |
-| `Remote branch … not found` | Destination branch name mismatch | Set `deploy_branch` to the real branch on the website repo |
+| Deploy job fails / Pages 404 | Pages source not GitHub Actions | Settings → Pages → Source: GitHub Actions |
+| Site at `/repo-name` not root | Project Pages repo name | Rename to `username.github.io` for root URL |
 
 ---
 
 ## Security notes
 
 - Store **dispatch** PAT only in Apps Script Script properties
-- Store **deploy** PAT only as GitHub Actions secret `DEPLOY_TOKEN`
 - Anyone who can edit the Apps Script project can read Script properties — limit editors
 - Spreadsheet “Anyone with the link” makes **content** public (required for CSV export without API keys)
 - Rotate PATs if leaked; revoke old tokens in GitHub settings
