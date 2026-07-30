@@ -91,6 +91,7 @@ After Sheet or Drive content changes, click **Publish website** in the sheet (do
 
 - `spreadsheet_id` / `sheet_gid` come from (in order): Apps Script `repository_dispatch` payload → Actions vars/env → `config.json`
 - Publish-from-sheet does **not** require `spreadsheet_id` in `config.json`
+- Publish also sends inline row CSV when the sheet is small enough (~45 KB); otherwise the Action fetches public CSV export by id
 - If export returns HTML, sharing is wrong (not public)
 
 ### Header row (required shape)

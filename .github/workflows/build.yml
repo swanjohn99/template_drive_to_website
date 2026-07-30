@@ -41,12 +41,26 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Decode sheet CSV from dispatch payload
+        if: github.event_name == 'repository_dispatch' && github.event.client_payload.sheet_csv_b64
+        env:
+          SHEET_CSV_B64: ${{ github.event.client_payload.sheet_csv_b64 }}
+        run: |
+          python3 -c "
+          import base64, os
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / 'dispatch-sheet.csv'
+          path.write_bytes(base64.b64decode(os.environ['SHEET_CSV_B64']))
+          print(f'SHEET_CSV_PATH={path}')
+          " >> "$GITHUB_ENV"
+
       - name: Build static site
         env:
-          # Prefer sheet id from Apps Script repository_dispatch payload; then Actions vars/secrets; then config.json
+          # Sheet publish sends spreadsheet_id / sheet_gid / optional inline CSV; then vars/secrets; then config.json
           SPREADSHEET_ID: ${{ github.event.client_payload.spreadsheet_id || vars.SPREADSHEET_ID || secrets.SPREADSHEET_ID }}
           SPREADSHEET_URL: ${{ vars.SPREADSHEET_URL || secrets.SPREADSHEET_URL }}
           SHEET_GID: ${{ github.event.client_payload.sheet_gid || vars.SHEET_GID || '0' }}
+          SHEET_CSV_PATH: ${{ env.SHEET_CSV_PATH }}
           SITE_TITLE: ${{ vars.SITE_TITLE }}
           SITE_TAGLINE: ${{ vars.SITE_TAGLINE }}
           IMAGE_MAX_WIDTH: ${{ vars.IMAGE_MAX_WIDTH || '1400' }}

@@ -9,6 +9,7 @@
  *                     e.g. https://github.com/owner/username.github.io
  *                     (also accepts owner/repo)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
+ *   CONTENT_SHEET_NAME  – optional, default "your website content" (tab with site rows)
  *
  * Legacy (optional if GH_REPO is only the repo name):
  *   GH_REPO_OWNER / GH_OWNER – user/org segment when GH_REPO is not a full URL
@@ -20,6 +21,7 @@
  */
 
 var DEFAULT_EVENT_TYPE = 'rebuild-site';
+var CONTENT_SHEET_NAME = 'your website content';
 
 /** Preferred header names for the image / URL column (first match wins). */
 var PICTURE_URL_HEADERS = ['Picture URLs', 'image', 'Image', 'photo', 'Photo'];
@@ -190,16 +192,37 @@ function publishWebsite() {
   var owner = target.owner;
   var repo = target.repo;
 
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = props.getProperty('CONTENT_SHEET_NAME') || CONTENT_SHEET_NAME;
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    ui.alert(
+      'Sheet tab not found',
+      'Create a tab named "' + sheetName + '" with your site rows (title, description, image, …).\n' +
+        'Or set CONTENT_SHEET_NAME in Script properties to match your tab name.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+  var clientPayload = {
+    source: 'google-sheets',
+    spreadsheet_id: ss.getId(),
+    sheet_gid: String(sheet.getSheetId()),
+    triggered_by: Session.getActiveUser().getEmail() || 'unknown',
+    triggered_at: new Date().toISOString()
+  };
+
+  // Inline CSV avoids configuring spreadsheet_id in the website-host repo.
+  // GitHub dispatch body limit is ~64 KB; fall back to id+gid fetch when too large.
+  var csvB64 = sheetDataToCsvBase64(sheet);
+  if (csvB64) {
+    clientPayload.sheet_csv_b64 = csvB64;
+  }
+
   var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/dispatches';
   var payload = {
     event_type: eventType,
-    client_payload: {
-      source: 'google-sheets',
-      spreadsheet_id: SpreadsheetApp.getActiveSpreadsheet().getId(),
-      sheet_gid: String(SpreadsheetApp.getActiveSheet().getSheetId()),
-      triggered_by: Session.getActiveUser().getEmail() || 'unknown',
-      triggered_at: new Date().toISOString()
-    }
+    client_payload: clientPayload
   };
 
   var response = UrlFetchApp.fetch(url, {
@@ -234,19 +257,51 @@ function publishWebsite() {
 }
 
 /**
+ * Serialize the active sheet as base64 CSV, or null if empty / too large for dispatch.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @return {string|null}
+ */
+function sheetDataToCsvBase64(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (!data.length) {
+    return null;
+  }
+
+  var lines = data.map(function (row) {
+    return row.map(function (cell) {
+      var s = cell == null ? '' : String(cell);
+      if (/[",\n\r]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }).join(',');
+  });
+
+  var csv = lines.join('\n');
+  var bytes = Utilities.newBlob(csv).getBytes();
+  // Leave headroom for JSON wrapper + other client_payload fields (~64 KB dispatch limit).
+  if (bytes.length > 45000) {
+    return null;
+  }
+  return Utilities.base64Encode(bytes);
+}
+
+/**
  * One-time helper: run from the Apps Script editor to verify properties exist.
  * Does not print the token.
  */
 function checkPublishConfig() {
   var props = PropertiesService.getScriptProperties();
   var target = resolveGithubRepo_(props);
+  var sheetName = props.getProperty('CONTENT_SHEET_NAME') || CONTENT_SHEET_NAME;
   var lines = [
     'GH_PAT: ' + (props.getProperty('GH_PAT')
       ? 'set (' + props.getProperty('GH_PAT').length + ' chars) — usually contributor account'
       : 'MISSING'),
     'GH_REPO: ' + (props.getProperty('GH_REPO') || 'MISSING'),
     'resolved: ' + (target ? target.owner + '/' + target.repo : 'MISSING'),
-    'GH_EVENT_TYPE: ' + (props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE + ' (default)')
+    'GH_EVENT_TYPE: ' + (props.getProperty('GH_EVENT_TYPE') || DEFAULT_EVENT_TYPE + ' (default)'),
+    'CONTENT_SHEET_NAME: ' + sheetName
   ];
   Logger.log(lines.join('\n'));
   SpreadsheetApp.getUi().alert(lines.join('\n'));

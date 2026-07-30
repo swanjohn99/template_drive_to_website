@@ -58,6 +58,7 @@ If step 4 fails, stop — a PAT will not help until collaborator Write + Actions
 
 1. Go to [Google Sheets](https://sheets.google.com) → **Blank** spreadsheet
 2. Rename it (e.g. `My Site Content`)
+3. Rename the data tab to **`your website content`** (bottom tab label — the Publish button reads this tab, not whichever tab is open)
 
 ### A2. Header row (row 1)
 
@@ -87,11 +88,9 @@ Rules:
 
 1. **Share** (top right)
 2. **General access** → **Anyone with the link** → **Viewer**
-3. Copy the link; note the id:
+3. Copy the link; the **Publish website** button sends this sheet's id to GitHub automatically — you do **not** need `spreadsheet_id` in `config.json` when publishing from the sheet.
 
-`https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
-
-Put `SPREADSHEET_ID` into this repo only if you need non-sheet triggers (manual Action run / push rebuild). **Publish website** from the sheet sends the id automatically — no `config.json` entry required for that path.
+Optional fallback for manual Action runs: set `spreadsheet_id` in `config.json` or Actions variable `SPREADSHEET_ID`. **Publish website** from the sheet sends the id (+ optional inline CSV) automatically — no `config.json` entry required for that path.
 
 ### A5. Confirm CSV export works
 
@@ -168,6 +167,7 @@ Add:
 | `GH_PAT` | `github_pat_…` | Token from Part B — usually the **contributor** account |
 | `GH_REPO` | `https://github.com/swanjohn99/username.github.io` | Full URL of the **template copy / website host** (also accepts `owner/repo`). Not a separate destination repo; not the PAT author’s profile unless that is the host |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
+| `CONTENT_SHEET_NAME` | `your website content` | Optional; tab name with site rows (default: `your website content`) |
 
 Legacy: if `GH_REPO` is only the repo name, also set `GH_REPO_OWNER` (or `GH_OWNER`) to the URL user/org.
 
@@ -245,11 +245,13 @@ on:
 
 Also ensure:
 
-1. Prefer **Publish website** from the sheet (sends sheet id in the dispatch payload)
+1. Prefer **Publish website** from the sheet (sends sheet id + optional inline CSV in the dispatch payload)
 2. Optional: Actions variable `SPREADSHEET_ID` or `config.json` → `spreadsheet_id` for manual / push rebuilds
 3. **Settings → Pages → Source: GitHub Actions**
 4. For a root URL, the repo is named `username.github.io` (or org equivalent)
 5. Actions are enabled on this repo
+
+`spreadsheet_id` in `config.json` is optional when editors publish from the sheet. Keep it only for manual `workflow_dispatch` / push builds without the button.
 
 ---
 
@@ -273,6 +275,7 @@ Also ensure:
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
 | Button does nothing | Script name typo | Assign `publishWebsite` exactly |
+| Alert “Sheet tab not found” | Missing/wrong tab name | Rename tab to `your website content` or set `CONTENT_SHEET_NAME` |
 | Action runs but site empty / old | Sheet not public / sample fallback | Part A4–A5; publish from sheet, or set `SPREADSHEET_ID` / `config.json` for manual runs |
 | Deploy job fails / Pages 404 | Pages source not GitHub Actions | Settings → Pages → Source: GitHub Actions |
 | Site at `/repo-name` not root | Project Pages repo name | Rename to `username.github.io` for root URL |
