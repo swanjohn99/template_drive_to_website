@@ -116,6 +116,18 @@ def sheet_csv_url(spreadsheet_id: str, gid: str) -> str:
     )
 
 
+def parse_csv_text(text: str, source: str = "sheet") -> list[dict]:
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise RuntimeError(f"{source} CSV has no header row.")
+    rows = []
+    for raw in reader:
+        row = {normalize_key(k): (v or "").strip() for k, v in raw.items() if k}
+        if any(row.values()):
+            rows.append(row)
+    return rows
+
+
 def fetch_csv(url: str) -> list[dict]:
     print(f"Fetching sheet: {url}")
     r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=60)
@@ -128,16 +140,13 @@ def fetch_csv(url: str) -> list[dict]:
             "Sheet export returned HTML. Share the spreadsheet as "
             "'Anyone with the link can view' (or Publish to web)."
         )
-    reader = csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames:
-        raise RuntimeError("Sheet CSV has no header row.")
-    # Normalize headers
-    rows = []
-    for raw in reader:
-        row = {normalize_key(k): (v or "").strip() for k, v in raw.items() if k}
-        if any(row.values()):
-            rows.append(row)
-    return rows
+    return parse_csv_text(text, source="exported sheet")
+
+
+def load_csv_from_path(path: Path) -> list[dict]:
+    print(f"Loading sheet from dispatch payload: {path}")
+    text = path.read_text(encoding="utf-8-sig")
+    return parse_csv_text(text, source="dispatch sheet")
 
 
 def normalize_key(key: str) -> str:
@@ -660,7 +669,21 @@ def main() -> int:
         or spreadsheet_id.startswith("REPLACE_")
     )
 
-    if use_sample:
+    sheet_csv_path = os.environ.get("SHEET_CSV_PATH", "").strip()
+    inline_csv = os.environ.get("SHEET_CSV", "").strip()
+
+    if sheet_csv_path:
+        path = Path(sheet_csv_path)
+        if not path.is_file():
+            raise RuntimeError(f"SHEET_CSV_PATH does not exist: {path}")
+        rows = load_csv_from_path(path)
+        print(f"Loaded {len(rows)} rows from dispatch payload")
+        items = process_rows(cfg, rows)
+    elif inline_csv:
+        rows = parse_csv_text(inline_csv, source="SHEET_CSV env")
+        print(f"Loaded {len(rows)} rows from SHEET_CSV env")
+        items = process_rows(cfg, rows)
+    elif use_sample:
         print("No real spreadsheet configured — building demo site from sample/content.csv")
         items = build_from_local_sample(cfg)
     else:

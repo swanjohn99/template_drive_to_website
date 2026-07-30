@@ -30,6 +30,7 @@ You need **two different GitHub tokens** (do not reuse one for both jobs):
 
 1. Go to [Google Sheets](https://sheets.google.com) → **Blank** spreadsheet
 2. Rename it (e.g. `My Site Content`)
+3. Rename the data tab to **`your website content`** (bottom tab label — the Publish button reads this tab, not whichever tab is open)
 
 ### A2. Header row (row 1)
 
@@ -59,11 +60,9 @@ Rules:
 
 1. **Share** (top right)
 2. **General access** → **Anyone with the link** → **Viewer**
-3. Copy the link; note the id:
+3. Copy the link; the **Publish website** button sends this sheet's id to GitHub automatically — you do **not** need `spreadsheet_id` in `config.json` when publishing from the sheet.
 
-`https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
-
-Put `SPREADSHEET_ID` into the content repo `config.json` → `spreadsheet_id` (or Actions variable `SPREADSHEET_ID`).
+   Optional fallback for manual Action runs: set `spreadsheet_id` in `config.json` or Actions variable `SPREADSHEET_ID`.
 
 ### A5. Confirm CSV export works
 
@@ -125,6 +124,7 @@ Add:
 | `GH_OWNER` | `swanjohn99` | Owner of the **content** repo |
 | `GH_REPO` | `my-site-content` | **Content** repo name only (not `owner/repo`) |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional; must match workflow `repository_dispatch` types |
+| `CONTENT_SHEET_NAME` | `your website content` | Optional; tab name with site rows (default: `your website content`) |
 
 3. Save
 
@@ -200,10 +200,11 @@ on:
 
 Also ensure:
 
-1. `config.json` has the real `spreadsheet_id`
-2. `deploy_repo` / `deploy_branch` point at the website host
-3. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W on the **destination** repo)
-4. Actions are enabled on the content repo
+1. `deploy_repo` / `deploy_branch` point at the website host
+2. Actions secret `DEPLOY_TOKEN` is set (deploy PAT — Contents R/W on the **destination** repo)
+3. Actions are enabled on the content repo
+
+`spreadsheet_id` in `config.json` is optional when editors publish from the sheet (Apps Script sends sheet id + row CSV in the dispatch payload). Keep it only for manual `workflow_dispatch` / push builds without the button.
 
 ---
 
@@ -226,6 +227,7 @@ Also ensure:
 | Alert “Missing script properties” | Properties not saved | Part C2 |
 | Menu missing | `onOpen` not run | Refresh sheet; or run `onOpen` in editor |
 | Button does nothing | Script name typo | Assign `publishWebsite` exactly |
+| Alert “Sheet tab not found” | Missing/wrong tab name | Rename tab to `your website content` or set `CONTENT_SHEET_NAME` |
 | Action runs but site empty / old | Sheet not public / wrong spreadsheet_id | Part A4–A5; check `config.json` |
 | Action fails on push | `DEPLOY_TOKEN` / `deploy_branch` | See README PAT section + destination `main` branch |
 | `Remote branch … not found` | Destination branch name mismatch | Set `deploy_branch` to the real branch on the website repo |

@@ -6,6 +6,8 @@
  *   GH_PAT          – fine-grained PAT with Actions: Read and write on the CONTENT repo
  *   GH_OWNER        – GitHub user/org that owns the content repo (e.g. swanjohn99)
  *   GH_REPO         – content repo name (e.g. my-site-content)
+ *   GH_EVENT_TYPE       – optional, default rebuild-site (must match workflow repository_dispatch types)
+ *   CONTENT_SHEET_NAME  – optional, default "your website content" (tab with site rows)
  *   GH_EVENT_TYPE   – optional, default rebuild-site (must match workflow repository_dispatch types)
  *
  * Drive layout for Import Picture URLs:
@@ -15,6 +17,7 @@
  */
 
 var DEFAULT_EVENT_TYPE = 'rebuild-site';
+var CONTENT_SHEET_NAME = 'your website content';
 
 /** Preferred header names for the image / URL column (first match wins). */
 var PICTURE_URL_HEADERS = ['Picture URLs', 'image', 'Image', 'photo', 'Photo'];
@@ -140,15 +143,37 @@ function publishWebsite() {
     return;
   }
 
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = props.getProperty('CONTENT_SHEET_NAME') || CONTENT_SHEET_NAME;
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    ui.alert(
+      'Sheet tab not found',
+      'Create a tab named "' + sheetName + '" with your site rows (title, description, image, …).\n' +
+        'Or set CONTENT_SHEET_NAME in Script properties to match your tab name.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+  var clientPayload = {
+    source: 'google-sheets',
+    spreadsheet_id: ss.getId(),
+    sheet_gid: String(sheet.getSheetId()),
+    triggered_by: Session.getActiveUser().getEmail() || 'unknown',
+    triggered_at: new Date().toISOString()
+  };
+
+  // Inline CSV avoids configuring spreadsheet_id in the content repo.
+  // GitHub dispatch body limit is ~64 KB; fall back to id+gid fetch when too large.
+  var csvB64 = sheetDataToCsvBase64(sheet);
+  if (csvB64) {
+    clientPayload.sheet_csv_b64 = csvB64;
+  }
+
   var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/dispatches';
   var payload = {
     event_type: eventType,
-    client_payload: {
-      source: 'google-sheets',
-      spreadsheet_id: SpreadsheetApp.getActiveSpreadsheet().getId(),
-      triggered_by: Session.getActiveUser().getEmail() || 'unknown',
-      triggered_at: new Date().toISOString()
-    }
+    client_payload: clientPayload
   };
 
   var response = UrlFetchApp.fetch(url, {
@@ -180,6 +205,36 @@ function publishWebsite() {
     response.getContentText().substring(0, 1500),
     ui.ButtonSet.OK
   );
+}
+
+/**
+ * Serialize the active sheet as base64 CSV, or null if empty / too large for dispatch.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @return {string|null}
+ */
+function sheetDataToCsvBase64(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (!data.length) {
+    return null;
+  }
+
+  var lines = data.map(function (row) {
+    return row.map(function (cell) {
+      var s = cell == null ? '' : String(cell);
+      if (/[",\n\r]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }).join(',');
+  });
+
+  var csv = lines.join('\n');
+  var bytes = Utilities.newBlob(csv).getBytes();
+  // Leave headroom for JSON wrapper + other client_payload fields (~64 KB dispatch limit).
+  if (bytes.length > 45000) {
+    return null;
+  }
+  return Utilities.base64Encode(bytes);
 }
 
 /**
