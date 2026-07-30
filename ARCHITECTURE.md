@@ -7,12 +7,16 @@ Source of truth for data flow, spreadsheet schema, config, build output, and **w
 
 Static website generated from:
 
-1. **Google Spreadsheet** (public) — page copy / metadata
+1. **Google Spreadsheet** (public) — page copy / metadata + **Publish** button (Apps Script)
 2. **Google Drive files** (public) — photos referenced by the sheet
 3. **GitHub Action in this (content) repo** — fetch → resize → write `site/`
 4. **Push generated files into a separate public website repo** — that repo is what GitHub Pages hosts
 
-No runtime backend. No Google API keys. Public share links only.
+**Primary publish path:** editor clicks a button (or **Site → Publish website**) in the spreadsheet → Google Apps Script sends `repository_dispatch` → Action builds and deploys.
+
+No runtime backend. No Google API keys for Sheet/Drive read. Public share links only.
+
+Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · script source: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
 
 ## Two-repo model
 
@@ -28,11 +32,14 @@ The person running the content repo is a **collaborator with write access to `ma
 ```text
 Editors / uploaders
   ├─ Google Drive  (images, Anyone-with-link)
-  └─ Google Sheet  (rows of content, Anyone-with-link)
+  └─ Google Sheet  (rows + Apps Script button)
            │
+           │  click "Publish website"
            ▼
-  Content repo  (template copy — tweaks live here)
-  GitHub Action (.github/workflows/build.yml)
+  Apps Script  →  GitHub API repository_dispatch (event: rebuild-site)
+           │         (Script property GH_PAT — Actions write on CONTENT repo)
+           ▼
+  Content repo  GitHub Action (.github/workflows/build.yml)
            │
            ▼
   scripts/build.py
@@ -44,11 +51,18 @@ Editors / uploaders
            ├─ optional: commit site/ in content repo (preview / history)
            │
            ▼
-  Push site/ contents → destination website repo (main or configured branch)
-           │
+  Push site/ contents → destination website repo
+           │         (Actions secret DEPLOY_TOKEN — Contents write on DESTINATION)
            ▼
   GitHub Pages on the DESTINATION repo (public site)
 ```
+
+### Two PATs (do not conflate)
+
+| Token | Stored in | Repo it targets | Fine-grained permission |
+|-------|-----------|-----------------|-------------------------|
+| **Dispatch** (`GH_PAT`) | Apps Script **Script properties** | **Content** repo | **Actions: Read and write** (+ Metadata R) |
+| **Deploy** (`DEPLOY_TOKEN`) | Content repo Actions **secret** | **Destination** website repo | **Contents: Read and write** (+ Metadata R) |
 
 **Default `GITHUB_TOKEN` cannot push to another repo.** Deploy needs secret `DEPLOY_TOKEN`.
 
@@ -80,11 +94,14 @@ Several content repos pushing into the **same** destination path will overwrite 
 
 ## Rebuild triggers
 
-- Manual: Actions → `Build site from Google Drive + Sheets` → Run workflow
-- Schedule: hourly cron
-- Push to `main` touching `config.json`, `scripts/**`, `sample/**`, workflow, or `requirements.txt`
+| Trigger | When to use |
+|---------|-------------|
+| **Google Sheet button / Site menu** (primary) | After editing Sheet or Drive content — see `GOOGLE_SHEETS_SETUP.md` |
+| `repository_dispatch` type `rebuild-site` | What Apps Script sends |
+| Manual `workflow_dispatch` | Backup from GitHub Actions UI |
+| Push to `main` touching build config/scripts | After template/code changes |
 
-After any Sheet or Drive content change, re-run the Action (or wait for cron). That rebuild also re-pushes to the destination website repo when deploy is configured.
+After Sheet or Drive content changes, click **Publish website** in the sheet (do not rely on a schedule). That rebuild also re-pushes to the destination website repo when deploy is configured.
 
 ## Google Spreadsheet configuration
 
@@ -163,7 +180,7 @@ Each Drive file must be **Anyone with the link → Viewer**.
 | `image_quality`   | JPEG quality (default 82) |
 | `output_dir`      | Local build folder (default `site`) |
 | `deploy_repo`     | Destination `owner/repo` (empty = skip remote push) |
-| `deploy_branch`   | Branch on destination (default `main`) |
+| `deploy_branch`   | Branch on destination (default `main`). **Must match a real branch name** on that repo (`main` / `master` / `gh-pages`), or the Action will create it when possible |
 | `deploy_path`     | Path inside destination to write files (default `.` = repo root) |
 | `commit_site_locally` | If `true`, also commit `site/` back to this content repo |
 
@@ -201,7 +218,9 @@ Env / Actions vars win over `config.json` when set.
 | Path | Role |
 |------|------|
 | `scripts/build.py` | Builder only: fetch CSV, Drive download, resize, HTML/CSS/JS emit |
-| `.github/workflows/build.yml` | CI: build → optional local `site/` commit → push `site/` to destination repo |
+| `.github/workflows/build.yml` | CI: `repository_dispatch` / build → optional local `site/` commit → push to destination |
+| `google-apps-script/Code.gs` | Sheet button/menu script (copy into Apps Script project) |
+| `GOOGLE_SHEETS_SETUP.md` | Step-by-step Sheet + Apps Script + button + PAT instructions |
 | `config.json` | Sheet + brand + **deploy_repo / branch / path** |
 | `sample/content.csv` | Demo sheet shape when no real id configured |
 | `site/` | **Generated** static output (source of files pushed remotely) |
@@ -215,14 +234,15 @@ Env / Actions vars win over `config.json` when set.
 
 ## Invariants for planners
 
-1. **Do not** add a server or Google service-account flow unless explicitly requested — template is public-link based.
-2. Spreadsheet schema above is the contract; column renames need matching aliases in `scripts/build.py` (`process_rows` / `normalize_key`).
-3. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term.
-4. After content changes, the Action must run again — that rebuild **and** re-pushes to the destination website repo.
-5. Demo mode: empty/`REPLACE_*` `spreadsheet_id` → `sample/content.csv` placeholders; real deploys need a real sheet id + public Drive files.
-6. **Live hosting is the destination repo**, not (primarily) this content repo’s Pages. Do not assume same-repo `actions/deploy-pages` is the production path.
-7. Cross-repo push requires `DEPLOY_TOKEN`; never commit PATs. Do not rely on default `GITHUB_TOKEN` for destination writes.
-8. When planning multi-site templates, call out `deploy_path` / overwrite risk explicitly.
+1. **Do not** add a server or Google service-account flow for Sheet/Drive **reads** unless explicitly requested — reads stay public-link based.
+2. **Primary publish trigger is the Sheet Apps Script button** (`repository_dispatch` / `rebuild-site`), not cron.
+3. Spreadsheet schema above is the contract; column renames need matching aliases in `scripts/build.py` (`process_rows` / `normalize_key`).
+4. `site/` is build output — prefer changing `scripts/build.py` (HTML/CSS/JS templates live inside it) over hand-editing `site/` long-term.
+5. After content changes, publish from the sheet — that rebuild **and** re-pushes to the destination website repo.
+6. Demo mode: empty/`REPLACE_*` `spreadsheet_id` → `sample/content.csv` placeholders; real deploys need a real sheet id + public Drive files.
+7. **Live hosting is the destination repo**, not (primarily) this content repo’s Pages.
+8. **Two PATs**: `GH_PAT` (Apps Script → content repo Actions) and `DEPLOY_TOKEN` (Action → destination Contents). Never commit either. Never use Codespaces secrets for Actions.
+9. When planning multi-site templates, call out `deploy_path` / overwrite risk explicitly.
 
 ## Typical change recipes
 
@@ -230,10 +250,11 @@ Env / Actions vars win over `config.json` when set.
 |------|-------|
 | New sheet columns on the page | Sheet header + `scripts/build.py` (`process_rows`, `render_html`) |
 | Visual redesign | CSS/HTML/JS strings inside `scripts/build.py` (`write_assets`, `render_html`) |
-| Different sheet / brand | `config.json` or Actions vars — then re-run Action |
-| Image size/quality | `image_max_width` / `image_quality` — then re-run Action |
+| Different sheet / brand | `config.json` or Actions vars — then publish from Sheet |
+| Image size/quality | `image_max_width` / `image_quality` — then publish from Sheet |
 | Point at host website repo | `deploy_repo`, `deploy_branch`, `deploy_path` + secret `DEPLOY_TOKEN` |
-| Rebuild cadence | `.github/workflows/build.yml` `on.schedule` / `workflow_dispatch` |
+| Change publish button / Apps Script | `google-apps-script/Code.gs` + `GOOGLE_SHEETS_SETUP.md` + keep `repository_dispatch` types in sync |
+| Dispatch event name | Workflow `repository_dispatch.types` **and** Apps Script `GH_EVENT_TYPE` / `rebuild-site` together |
 
 ## Local build
 

@@ -1,14 +1,17 @@
 # Drive + Sheets → static website
 
-People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A GitHub Action in **this content repo** builds static files, then **pushes them into a separate public website repo** (GitHub Pages host).
+People upload pictures to a **public Google Drive**. Editors put titles and captions in a **public Google Spreadsheet**. A **button on the spreadsheet** (Google Apps Script) triggers a GitHub Action in **this content repo**, which builds static files and **pushes them into a separate public website repo** (GitHub Pages host).
 
-Re-run the Action after Sheet/Drive updates (or wait for hourly cron).
+After Sheet/Drive updates: click **Publish website** on the sheet (or use **Site → Publish website**).
 
-**Planners / Cursor:** read [`ARCHITECTURE.md`](ARCHITECTURE.md) — spreadsheet schema + **two-repo deploy** contract.
+**Setup for the sheet + button:** [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)  
+**Planners / Cursor:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ## Setup
 
-### 1. Google Spreadsheet
+### 1. Google Spreadsheet + Publish button
+
+Follow **[`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md)** end-to-end (columns, public share, Apps Script, button, dispatch PAT).
 
 Header row:
 
@@ -110,9 +113,13 @@ Fine-grained is safer because you lock the token to **one** destination repo. Cl
 
 The workflow clones/pushes the destination with that secret. If the token expires or is revoked, deploys fail until you create a new PAT and update the secret.
 
-### 6. Run the Action
+### 6. Publish from the spreadsheet
 
-Actions → **Build site from Google Drive + Sheets** → **Run workflow**.
+1. Edit Sheet / Drive content as needed  
+2. Click the **Publish website** button (or **Site → Publish website**)  
+3. Confirm the run under the content repo **Actions** tab  
+
+Backup: Actions → **Build site from Google Drive + Sheets** → **Run workflow**.
 
 ## Local build
 
