@@ -1,0 +1,84 @@
+name: Build site from Google Drive + Sheets
+
+on:
+  # Manual: Actions → Build site → Run workflow
+  workflow_dispatch:
+  # Re-check for Sheet / Drive updates on a schedule
+  schedule:
+    - cron: "0 * * * *" # hourly
+  # Also rebuild when config or templates change
+  push:
+    branches: [main]
+    paths:
+      - "config.json"
+      - "scripts/**"
+      - "sample/**"
+      - ".github/workflows/build.yml"
+      - "requirements.txt"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build-site
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build static site
+        env:
+          # Prefer repo Variables / Secrets over committed config.json
+          SPREADSHEET_ID: ${{ vars.SPREADSHEET_ID || secrets.SPREADSHEET_ID }}
+          SPREADSHEET_URL: ${{ vars.SPREADSHEET_URL || secrets.SPREADSHEET_URL }}
+          SHEET_GID: ${{ vars.SHEET_GID || '0' }}
+          SITE_TITLE: ${{ vars.SITE_TITLE }}
+          SITE_TAGLINE: ${{ vars.SITE_TAGLINE }}
+          IMAGE_MAX_WIDTH: ${{ vars.IMAGE_MAX_WIDTH || '1400' }}
+          IMAGE_QUALITY: ${{ vars.IMAGE_QUALITY || '82' }}
+        run: python scripts/build.py
+
+      - name: Commit site output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site
+          if git diff --staged --quiet; then
+            echo "No site changes"
+          else
+            git commit -m "chore: rebuild static site from Sheet + Drive"
+            git push
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        # First time: Settings → Pages → Source = GitHub Actions

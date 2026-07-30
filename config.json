@@ -1,0 +1,9 @@
+{
+  "spreadsheet_id": "REPLACE_WITH_YOUR_SHEET_ID",
+  "sheet_gid": "0",
+  "site_title": "Photo Journal",
+  "site_tagline": "Stories and pictures from the field",
+  "image_max_width": 1400,
+  "image_quality": 82,
+  "output_dir": "site"
+}
