@@ -13,7 +13,7 @@ It defines:
 - **One-repo hosting:** build + Pages artifact deploy in this repo (root URL via `username.github.io`)
 - **One PAT:** `GH_PAT` in Apps Script (usually a contributor’s token, Actions write on this repo) + `GH_REPO` as the full GitHub URL; Pages deploy uses `GITHUB_TOKEN` (`pages` + `id-token`)
 - Google Spreadsheet column schema and sharing rules
-- `config.json` / env / secrets overrides
+- `config.json` / env / secrets / **dispatch payload** overrides (`spreadsheet_id` optional when publishing from the sheet)
 - What is generated vs source of truth (`site/` gitignored)
 - Safe change recipes
 
