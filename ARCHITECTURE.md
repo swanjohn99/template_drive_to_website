@@ -22,6 +22,8 @@ Static website generated from:
 
 No runtime backend. No Google API keys for Sheet/Drive read. Public share links only.
 
+**Minimal hosting repo (non-technical owners):** day-to-day work is Sheet + Drive only. No `config.json`, no Actions secrets for content. Brand / tagline / image resize live in the spreadsheet **Settings** tab. A technical contributor can own design/template edits in `owner.github.io`.
+
 Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) · script source: [`google-apps-script/Code.gs`](google-apps-script/Code.gs)
 
 ## One-repo model (template → hosting repo)
@@ -91,8 +93,9 @@ The public template repo itself is not a Pages host; only copies named `owner.gi
 ### Access
 
 - Share: **Anyone with the link → Viewer** (required for public CSV export fallback)
-- Publish-from-sheet sends `spreadsheet_id` / `sheet_gid` and optional inline CSV in the dispatch payload — **`spreadsheet_id` in `config.json` is optional** for that path
+- Publish-from-sheet sends `spreadsheet_id` / `sheet_gid` / Settings / optional inline CSV — **no `config.json`**
 - Content tab name default: **`your website content`** (`CONTENT_SHEET_NAME`)
+- Settings tab name default: **`settings`** (`SETTINGS_SHEET_NAME`) — `key` / `value` rows
 
 ### Header row (required shape)
 
@@ -107,6 +110,17 @@ The public template repo itself is not a Pages host; only copies named `owner.gi
 
 \* If missing, builder uses `Item N`.  
 \*\* Rows without a resolvable image still emit text-only items; gallery cards without `image_src` are omitted from the grid.
+
+### Settings tab (`settings`)
+
+| key | value (example) | Meaning |
+|-----|-----------------|---------|
+| `site_title` | Photo Journal | Brand / hero brand text |
+| `site_tagline` | Stories from the field | Hero headline |
+| `image_max_width` | 1400 | Resize max width px |
+| `image_quality` | 82 | JPEG quality |
+
+Header aliases: `key`/`setting`/`name` + `value`/`val`. Missing tab → builder defaults. Publish sends `settings_json` (+ `settings_gid` for CSV fallback).
 
 ### `section` rules
 
@@ -124,27 +138,18 @@ Each Drive file: **Anyone with the link → Viewer**.
 
 ## Repo configuration
 
-### `config.json`
+**Keep the hosting repo minimal.** Site brand + image resize settings live in the spreadsheet **Settings** tab — not a repo file, not required Actions vars. Builder defaults apply when the tab is missing. Optional env overrides below are for contributors / edge cases only.
 
-| Key               | Role |
-|-------------------|------|
-| `spreadsheet_id`  | Optional fallback for manual/push builds (empty OK when publishing from sheet) |
-| `sheet_gid`       | Tab gid fallback (default `"0"`) |
-| `site_title`      | Brand / hero brand text |
-| `site_tagline`    | Hero headline |
-| `image_max_width` | Resize max width px (default 1400) |
-| `image_quality`   | JPEG quality (default 82) |
-| `output_dir`      | Local build folder (default `site`; published to repo root in CI) |
-
-### Secrets / variables (Actions)
+### Env / secrets (Actions) — optional
 
 | Name | Kind | Maps to |
 |------|------|---------|
-| `SPREADSHEET_ID` | Var/secret optional | `spreadsheet_id` (manual/push) |
+| `SPREADSHEET_ID` | Var/secret optional | content fetch fallback (manual/push) |
 | `SPREADSHEET_URL` | Var/secret optional | parses id + optional `gid` |
-| `SHEET_GID` | Var optional | `sheet_gid` |
-| `SITE_TITLE` / `SITE_TAGLINE` | Var | brand overrides |
-| `IMAGE_MAX_WIDTH` / `IMAGE_QUALITY` | Var | image settings |
+| `SHEET_GID` | Var optional | content tab gid fallback |
+| `SETTINGS_GID` | Var optional | Settings tab gid fallback |
+| `SITE_TITLE` / `SITE_TAGLINE` | Var optional | brand overrides (prefer Settings tab) |
+| `IMAGE_MAX_WIDTH` / `IMAGE_QUALITY` | Var optional | image overrides (prefer Settings tab) |
 
 **Do not** create `DEPLOY_TOKEN`, `DEPLOY_REPO`, or cross-repo deploy secrets.
 

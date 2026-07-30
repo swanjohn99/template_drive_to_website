@@ -10,7 +10,6 @@ on:
   push:
     branches: [main]
     paths:
-      - "config.json"
       - "scripts/**"
       - "sample/**"
       - ".github/workflows/build.yml"
@@ -61,15 +60,18 @@ jobs:
 
       - name: Build static site
         env:
-          # Sheet publish sends spreadsheet_id / sheet_gid / optional inline CSV.
+          # Sheet publish sends spreadsheet_id / sheet_gid / settings / optional inline CSV.
           SPREADSHEET_ID: ${{ github.event.client_payload.spreadsheet_id || vars.SPREADSHEET_ID || secrets.SPREADSHEET_ID }}
           SPREADSHEET_URL: ${{ vars.SPREADSHEET_URL || secrets.SPREADSHEET_URL }}
           SHEET_GID: ${{ github.event.client_payload.sheet_gid || vars.SHEET_GID || '0' }}
+          SETTINGS_GID: ${{ github.event.client_payload.settings_gid || vars.SETTINGS_GID }}
+          SETTINGS_JSON: ${{ github.event.client_payload.settings_json }}
           SHEET_CSV_PATH: ${{ env.SHEET_CSV_PATH }}
+          # Optional Actions overrides (Settings tab is the normal source)
           SITE_TITLE: ${{ vars.SITE_TITLE }}
           SITE_TAGLINE: ${{ vars.SITE_TAGLINE }}
-          IMAGE_MAX_WIDTH: ${{ vars.IMAGE_MAX_WIDTH || '1400' }}
-          IMAGE_QUALITY: ${{ vars.IMAGE_QUALITY || '82' }}
+          IMAGE_MAX_WIDTH: ${{ vars.IMAGE_MAX_WIDTH }}
+          IMAGE_QUALITY: ${{ vars.IMAGE_QUALITY }}
         run: python scripts/build.py
 
       - name: Publish site/ to repo root (Pages from main)

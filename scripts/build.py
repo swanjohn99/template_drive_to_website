@@ -19,7 +19,6 @@ import requests
 from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", ROOT / "config.json"))
 CACHE_DIR = ROOT / "scripts" / "_cache"
 
 DRIVE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{10,}$")
@@ -27,39 +26,35 @@ USER_AGENT = (
     "Mozilla/5.0 (compatible; DriveToWebsite/1.0; +https://github.com/)"
 )
 
+DEFAULT_CONFIG = {
+    "spreadsheet_id": "",
+    "sheet_gid": "0",
+    "settings_gid": "",
+    "site_title": "Photo Journal",
+    "site_tagline": "Stories and pictures from the field",
+    "image_max_width": 1400,
+    "image_quality": 82,
+    "output_dir": "site",
+}
+
+SETTINGS_KEYS = (
+    "site_title",
+    "site_tagline",
+    "image_max_width",
+    "image_quality",
+)
+
 
 def load_config() -> dict:
-    cfg = {
-        "spreadsheet_id": "",
-        "sheet_gid": "0",
-        "site_title": "Photo Journal",
-        "site_tagline": "Stories and pictures from the field",
-        "image_max_width": 1400,
-        "image_quality": 82,
-        "output_dir": "site",
-    }
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open(encoding="utf-8") as f:
-            cfg.update(json.load(f))
+    """Defaults + Settings tab / env. No config.json."""
+    cfg = dict(DEFAULT_CONFIG)
 
-    # Env overrides (GitHub Actions secrets / vars)
-    for key in (
-        "spreadsheet_id",
-        "sheet_gid",
-        "site_title",
-        "site_tagline",
-        "output_dir",
-    ):
+    # Spreadsheet id/gid first so Settings-tab CSV fetch can run before env brand overrides
+    for key in ("spreadsheet_id", "sheet_gid", "settings_gid", "output_dir"):
         env_key = key.upper()
         if os.environ.get(env_key):
             cfg[key] = os.environ[env_key]
 
-    if os.environ.get("IMAGE_MAX_WIDTH"):
-        cfg["image_max_width"] = int(os.environ["IMAGE_MAX_WIDTH"])
-    if os.environ.get("IMAGE_QUALITY"):
-        cfg["image_quality"] = int(os.environ["IMAGE_QUALITY"])
-
-    # Also accept Spreadsheet URL in SPREADSHEET_URL
     sheet_url = os.environ.get("SPREADSHEET_URL", "")
     if sheet_url:
         sid = extract_sheet_id(sheet_url)
@@ -69,7 +64,106 @@ def load_config() -> dict:
         if gid is not None:
             cfg["sheet_gid"] = gid
 
+    apply_settings_dict(cfg, parse_settings_json(os.environ.get("SETTINGS_JSON", "")))
+
+    settings_csv_path = os.environ.get("SETTINGS_CSV_PATH", "").strip()
+    if settings_csv_path:
+        path = Path(settings_csv_path)
+        if path.is_file():
+            print(f"Loading settings CSV: {path}")
+            apply_settings_dict(
+                cfg, parse_settings_rows(parse_csv_text(path.read_text(encoding="utf-8-sig")))
+            )
+        else:
+            print(f"WARN SETTINGS_CSV_PATH missing: {path}", file=sys.stderr)
+    elif not os.environ.get("SETTINGS_JSON", "").strip():
+        fetch_settings_for_spreadsheet(cfg)
+
+    # Brand / image env overrides win (Actions vars)
+    for key in ("site_title", "site_tagline"):
+        if os.environ.get(key.upper()):
+            cfg[key] = os.environ[key.upper()]
+    if os.environ.get("IMAGE_MAX_WIDTH"):
+        cfg["image_max_width"] = int(os.environ["IMAGE_MAX_WIDTH"])
+    if os.environ.get("IMAGE_QUALITY"):
+        cfg["image_quality"] = int(os.environ["IMAGE_QUALITY"])
+
     return cfg
+
+
+def parse_settings_json(raw: str) -> dict:
+    raw = (raw or "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        print(f"WARN invalid SETTINGS_JSON: {exc}", file=sys.stderr)
+        return {}
+    if not isinstance(data, dict):
+        print("WARN SETTINGS_JSON must be a JSON object", file=sys.stderr)
+        return {}
+    return {normalize_key(str(k)): v for k, v in data.items()}
+
+
+def parse_settings_rows(rows: list[dict]) -> dict:
+    """Parse Settings tab rows: key/value (or setting/value) columns."""
+    out: dict = {}
+    for row in rows:
+        key = (
+            row.get("key")
+            or row.get("setting")
+            or row.get("name")
+            or row.get("property")
+            or ""
+        )
+        if not key and len(row) >= 2:
+            # Fallback: first two column values when headers are odd
+            vals = list(row.values())
+            key, val = vals[0], vals[1]
+        else:
+            val = row.get("value")
+            if val is None:
+                val = row.get("val")
+        key = normalize_key(str(key or ""))
+        if not key:
+            continue
+        if val is None:
+            continue
+        out[key] = val if not isinstance(val, str) else val.strip()
+    return out
+
+
+def apply_settings_dict(cfg: dict, settings: dict) -> None:
+    if not settings:
+        return
+    for key in SETTINGS_KEYS:
+        if key not in settings or settings[key] in ("", None):
+            continue
+        if key in ("image_max_width", "image_quality"):
+            try:
+                cfg[key] = int(settings[key])
+            except (TypeError, ValueError):
+                print(f"WARN invalid {key}={settings[key]!r}", file=sys.stderr)
+        else:
+            cfg[key] = str(settings[key])
+
+
+def fetch_settings_for_spreadsheet(cfg: dict) -> None:
+    """Optional public CSV of Settings tab when settings_gid is known."""
+    spreadsheet_id = cfg.get("spreadsheet_id") or ""
+    settings_gid = str(cfg.get("settings_gid") or "").strip()
+    if not spreadsheet_id or not settings_gid:
+        return
+    if spreadsheet_id.startswith("REPLACE_"):
+        return
+    url = sheet_csv_url(spreadsheet_id, settings_gid)
+    try:
+        rows = fetch_csv(url)
+        apply_settings_dict(cfg, parse_settings_rows(rows))
+        print(f"Loaded {len(rows)} settings rows from sheet gid={settings_gid}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARN could not fetch settings tab: {exc}", file=sys.stderr)
 
 
 def extract_sheet_id(value: str) -> str | None:
@@ -619,6 +713,28 @@ def process_rows(cfg: dict, rows: list[dict]) -> list[dict]:
 
 def build_from_local_sample(cfg: dict) -> list[dict]:
     sample = ROOT / "sample" / "content.csv"
+    settings_sample = ROOT / "sample" / "settings.csv"
+    # Don't clobber Settings already supplied via SETTINGS_JSON / SETTINGS_CSV_PATH
+    has_inline_settings = bool(
+        os.environ.get("SETTINGS_JSON", "").strip()
+        or os.environ.get("SETTINGS_CSV_PATH", "").strip()
+    )
+    if settings_sample.is_file() and not has_inline_settings:
+        print(f"Loading sample settings: {settings_sample}")
+        apply_settings_dict(
+            cfg,
+            parse_settings_rows(
+                parse_csv_text(settings_sample.read_text(encoding="utf-8-sig"))
+            ),
+        )
+        # Env brand/image overrides still win over sample/settings.csv
+        for key in ("site_title", "site_tagline"):
+            if os.environ.get(key.upper()):
+                cfg[key] = os.environ[key.upper()]
+        if os.environ.get("IMAGE_MAX_WIDTH"):
+            cfg["image_max_width"] = int(os.environ["IMAGE_MAX_WIDTH"])
+        if os.environ.get("IMAGE_QUALITY"):
+            cfg["image_quality"] = int(os.environ["IMAGE_QUALITY"])
     print(f"Using local sample sheet: {sample}")
     with sample.open(encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -704,6 +820,9 @@ def main() -> int:
             {
                 "built_at": built_at,
                 "site_title": cfg["site_title"],
+                "site_tagline": cfg["site_tagline"],
+                "image_max_width": cfg["image_max_width"],
+                "image_quality": cfg["image_quality"],
                 "count": len(items),
                 "items": [
                     {

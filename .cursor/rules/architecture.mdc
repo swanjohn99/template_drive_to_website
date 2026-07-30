@@ -15,7 +15,9 @@ It defines:
 - **One PAT only:** `GH_PAT` = **hosting repo owner** fine-grained token, **`owner.github.io` only**, Actions R/W. **Never `DEPLOY_TOKEN`.** (Unrelated to the public template’s owner.)
 - CI enforces naming (`owner.github.io`) and Pages (`main` + `/`) via `scripts/check_host_repo.py`
 - Spreadsheet schema + `your website content` tab; dispatch may send inline CSV
-- `config.json` / env / dispatch payload overrides (`spreadsheet_id` optional when publishing from the sheet)
+- **Settings tab** (`settings`): `site_title`, `site_tagline`, `image_max_width`, `image_quality` — no `config.json`
+- **Minimal hosting repo:** non-technical owners use Sheet + Drive only; contributors handle design in `owner.github.io`
+- Env / dispatch payload for spreadsheet id + optional overrides (not required day-to-day)
 - Generated `site/` is gitignored; published files live at repo root
 
 Script source: `google-apps-script/Code.gs` (copied into the sheet’s Apps Script project).

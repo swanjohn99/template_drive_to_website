@@ -23,6 +23,8 @@ Copy-paste script: [`google-apps-script/Code.gs`](google-apps-script/Code.gs) ·
 |-------|-------|---------|
 | **`GH_PAT`** | Apps Script Script properties | Hosting-owner fine-grained PAT — **Actions R/W on `owner.github.io` only** — starts the Action |
 
+After setup, non-technical owners only edit the Sheet / Drive and click Publish. No GitHub config file. Add a technical contributor on the hosting repo for design/template changes.
+
 ---
 
 ## Part 0 — Hosting repo (required)
@@ -50,11 +52,26 @@ Google Sheets → Blank → rename (e.g. `My Site Content`)
 | title | description | image | section | order | published |
 |-------|-------------|-------|---------|-------|-----------|
 
+### A2b. Settings tab
+
+1. Add a second tab named **`settings`**
+2. Headers: **`key`** | **`value`**
+3. Rows (examples):
+
+| key | value |
+|-----|-------|
+| site_title | Your Brand |
+| site_tagline | One short line |
+| image_max_width | 1400 |
+| image_quality | 82 |
+
+Publish sends these to the Action. Missing tab → builder defaults (`Photo Journal`, etc.).
+
 ### A3. Share publicly
 
 **Anyone with the link → Viewer** (needed if the Action falls back to CSV export).
 
-Publish-from-sheet usually sends rows inline — you do **not** need `spreadsheet_id` in `config.json` for that path. Optional fallback: Actions var `SPREADSHEET_ID` or `config.json`.
+Publish-from-sheet usually sends rows + settings inline — you do **not** need a repo config file. Optional fallback: Actions var `SPREADSHEET_ID`.
 
 ### A4. Drive pictures
 
@@ -97,6 +114,7 @@ Extensions → Apps Script → paste [`google-apps-script/Code.gs`](google-apps-
 | `GH_REPO` | `https://github.com/owner/owner.github.io` | Full hosting repo URL |
 | `GH_EVENT_TYPE` | `rebuild-site` | Optional |
 | `CONTENT_SHEET_NAME` | `your website content` | Optional |
+| `SETTINGS_SHEET_NAME` | `settings` | Optional |
 
 Legacy: name-only `GH_REPO` + `GH_OWNER` still parses.
 
@@ -127,6 +145,7 @@ Insert → Drawing → Assign script: `publishWebsite`
 | Apps Script `401`/`403` | New owner fine-grained PAT, Actions R/W on hosting repo only |
 | Apps Script `404` | `GH_REPO` must be the hosting URL |
 | “Sheet tab not found” | Tab `your website content` or set `CONTENT_SHEET_NAME` |
+| Wrong brand / image size | Edit **`settings`** tab (`site_title`, `site_tagline`, `image_max_width`, `image_quality`) |
 | Empty site | Public share sheet/Drive; or check dispatch payload / `SPREADSHEET_ID` fallback |
 
 ---
