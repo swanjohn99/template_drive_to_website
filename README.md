@@ -35,7 +35,7 @@ Follow [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md).
 Created by the **owner** of `owner.github.io`:
 
 1. Fine-grained PAT → **only** that hosting repo
-2. Permission: **Actions: Read and write** (+ Metadata)
+2. Permissions: **Metadata: Read-only**; **Actions: Read and write**; **Contents (Code): Read and write**
 3. Store in Apps Script Script properties as `GH_PAT`
 4. `GH_REPO` = `https://github.com/owner/owner.github.io`
 
