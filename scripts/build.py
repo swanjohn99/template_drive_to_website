@@ -44,6 +44,37 @@ SETTINGS_KEYS = (
     "image_quality",
 )
 
+# Matches Apps Script PICTURE_URL_HEADERS (normalized keys).
+IMAGE_FIELD_KEYS = (
+    "image",
+    "image_id",
+    "drive_id",
+    "photo",
+    "picture_urls",
+    "picture_url",
+    "image_url",
+)
+
+
+def image_field_from_row(row: dict) -> str:
+    for key in IMAGE_FIELD_KEYS:
+        val = row.get(key)
+        if val:
+            return str(val).strip()
+    return ""
+
+
+def log_image_summary(items: list[dict]) -> None:
+    with_src = sum(1 for i in items if i.get("image_src"))
+    without = len(items) - with_src
+    print(f"Images: {with_src} with image_src, {without} without")
+    if items and with_src == 0:
+        print(
+            "WARN no images saved — check image column (image or Picture URLs), "
+            "Drive file share (Anyone with the link), and logs above",
+            file=sys.stderr,
+        )
+
 
 def load_config() -> dict:
     """Defaults + Settings tab / env. No config.json."""
@@ -671,13 +702,7 @@ def process_rows(cfg: dict, rows: list[dict]) -> list[dict]:
         title = row.get("title") or row.get("name") or f"Item {idx + 1}"
         description = row.get("description") or row.get("caption") or row.get("body") or ""
         section = (row.get("section") or "gallery").lower()
-        image_field = (
-            row.get("image")
-            or row.get("image_id")
-            or row.get("drive_id")
-            or row.get("photo")
-            or ""
-        )
+        image_field = image_field_from_row(row)
         file_id = extract_drive_id(image_field)
         image_src = ""
 
@@ -698,6 +723,11 @@ def process_rows(cfg: dict, rows: list[dict]) -> list[dict]:
         elif image_field.startswith("http"):
             # Non-Drive URL: keep remote reference
             image_src = image_field
+        elif image_field:
+            print(
+                f"  WARN no image for '{title}': unparseable Drive id/URL in image column",
+                file=sys.stderr,
+            )
 
         items.append(
             {
@@ -807,6 +837,8 @@ def main() -> int:
         rows = fetch_csv(url)
         print(f"Loaded {len(rows)} rows")
         items = process_rows(cfg, rows)
+
+    log_image_summary(items)
 
     built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     html = render_html(cfg, items, built_at)

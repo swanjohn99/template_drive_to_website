@@ -49,8 +49,10 @@ Google Sheets → Blank → rename (e.g. `My Site Content`)
 1. Rename the data tab to **`your website content`**
 2. Headers in row 1:
 
-| title | description | image | section | order | published |
-|-------|-------------|-------|---------|-------|-----------|
+| title | description | image (or **Picture URLs**) | section | order | published |
+|-------|-------------|-----------------------------|---------|-------|-----------|
+
+`Picture URLs` is written by **Import Picture URLs** in Apps Script; the builder treats it the same as `image`.
 
 ### A2b. Settings tab
 
@@ -75,7 +77,9 @@ Publish-from-sheet usually sends rows + settings inline — you do **not** need 
 
 ### A4. Drive pictures
 
-Files: **Anyone with the link → Viewer**. Put id/URL in `image`. Optional: sibling folder **`Pictures`** for **Import Picture URLs** (writes into the **`your website content`** tab, same as Publish).
+Each **image file** must be **Anyone with the link → Viewer** (the Action downloads by file id without Google login). Parent-folder sharing alone is not reliable — open each link in incognito to confirm the preview loads without sign-in. `?usp=drivesdk` in the URL is fine; redirects that drop it are normal.
+
+Put id/URL in `image` or **`Picture URLs`**. Optional: sibling folder **`Pictures`** for **Import Picture URLs** (writes into the **`your website content`** tab, same as Publish).
 
 ---
 
@@ -85,16 +89,20 @@ Created by the **owner** of `owner.github.io` (unrelated to who owns the public 
 
 1. https://github.com/settings/personal-access-tokens → **Fine-grained** → Generate
 2. **Resource owner**: the hosting repo owner
-3. **Repository access**: **Only** `owner.github.io`
+3. **Repository access**: **Only select repositories** → pick **`owner.github.io`** (the token must not list zero repositories)
 4. Permissions:
 
 | Permission | Access |
 |------------|--------|
 | **Actions** | **Read and write** |
-| **Metadata** | **Read-only** |
-| Contents | Read-only only if dispatch returns 404 without it |
+| **Contents** | **Read and write** (required for `repository_dispatch`; Actions alone often returns 403) |
+| **Metadata** | **Read-only** (usually auto-selected) |
 
 5. Copy once → Apps Script `GH_PAT`
+
+**Collaborators:** a fine-grained PAT from a collaborator works if the token is scoped to the hosting repo with the same permissions. The hosting repo owner’s PAT is the default recommendation.
+
+**Test (PowerShell):** `Invoke-RestMethod -Method POST -Uri "https://api.github.com/repos/owner/owner.github.io/dispatches" -Headers @{ Authorization = "Bearer YOUR_PAT"; Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" } -Body '{"event_type":"rebuild-site"}' -ContentType "application/json"` → no error means **204** success.
 
 Do **not** create or document a deploy PAT / `DEPLOY_TOKEN`.
 
@@ -142,10 +150,11 @@ Insert → Drawing → Assign script: `publishWebsite`
 |---------|-----|
 | CI: repo name error | Rename / use `{owner}.github.io` |
 | CI: Pages not enabled / wrong branch | Pages → branch `main`, folder `/` |
-| Apps Script `401`/`403` | New owner fine-grained PAT, Actions R/W on hosting repo only |
+| Apps Script `401`/`403` on dispatch | Fine-grained PAT: hosting repo **selected**, **Contents R/W** + **Actions R/W**; token from owner or scoped collaborator |
 | Apps Script `404` | `GH_REPO` must be the hosting URL |
 | “Sheet tab not found” | Tab `your website content` or set `CONTENT_SHEET_NAME` |
 | Wrong brand / image size | Edit **`settings`** tab (`site_title`, `site_tagline`, `image_max_width`, `image_quality`) |
+| Action succeeds, no `images/` | Sheet uses **`Picture URLs`** column (Import Picture URLs) — builder supports it; or use `image` header. Check Drive per-file public share. Action log: `WARN no images saved` |
 | Empty site | Public share sheet/Drive; or check dispatch payload / `SPREADSHEET_ID` fallback |
 
 ---

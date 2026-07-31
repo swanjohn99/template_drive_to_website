@@ -103,7 +103,7 @@ The public template repo itself is not a Pages host; only copies named `owner.gi
 |---------------|----------|---------|
 | `title`       | yes*     | Item heading. Fallback aliases: `name` |
 | `description` | no       | Caption / body. Aliases: `caption`, `body` |
-| `image`       | yes**    | Drive file id **or** share/download URL. Aliases: `image_id`, `drive_id`, `photo` |
+| `image`       | yes**    | Drive file id **or** share/download URL. Aliases: `image_id`, `drive_id`, `photo`, **`picture_urls`** / **`Picture URLs`** (Apps Script import) |
 | `section`     | no       | `featured` (hero) or `gallery` (default) |
 | `order`       | no       | Integer sort key (lower first). Default `9999` |
 | `published`   | no       | `yes`/`y`/`true`/`1`/`published` or empty = show. `no` = skip |
@@ -134,7 +134,7 @@ Header aliases: `key`/`setting`/`name` + `value`/`val`. Missing tab → builder 
 
 Drive file id from raw id, `/file/d/{id}/...`, `open?id=`, `uc?id=`, `thumbnail?id=`, `lh3.googleusercontent.com/d/{id}`. Non-Drive `http(s)` URLs kept as remote `src`.
 
-Each Drive file: **Anyone with the link → Viewer**.
+Each Drive **file** (not only the parent folder): **Anyone with the link → Viewer**. The builder downloads by file id without Google API auth.
 
 ## Repo configuration
 
