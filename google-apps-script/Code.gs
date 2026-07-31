@@ -5,7 +5,8 @@
  * Script properties required:
  *   GH_PAT          – fine-grained PAT from the **web hosting repo owner**
  *                     (not the public template's owner — that is irrelevant)
- *                     Actions: Read and write on owner/owner.github.io only
+ *                     Metadata: Read-only; Actions + Contents (Code): Read and write
+ *                     on owner/owner.github.io only
  *   GH_REPO         – full URL of the hosting repo; MUST be owner.github.io
  *                     e.g. https://github.com/owner/owner.github.io
  *                     (also accepts owner/repo; rejected if name ≠ owner.github.io)
@@ -176,7 +177,7 @@ function publishWebsite() {
     ui.alert(
       'Missing script properties',
       'Set GH_PAT and GH_REPO in Project Settings → Script properties.\n' +
-        'GH_PAT = fine-grained PAT from the **hosting repo owner** (Actions R/W on that repo only).\n' +
+        'GH_PAT = fine-grained PAT from the **hosting repo owner** (Metadata R, Actions R/W, Contents/Code R/W on that repo only).\n' +
         'GH_REPO = full URL, e.g. https://github.com/owner/owner.github.io\n' +
         'See GOOGLE_SHEETS_SETUP.md.',
       ui.ButtonSet.OK

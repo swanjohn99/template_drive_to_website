@@ -12,7 +12,7 @@ It defines:
 - **Pages host name required:** live site must be **`owner.github.io`** (not project Pages). CI hard-fails otherwise.
 - **Template → hosting repo:** copy into `owner.github.io`. That repo is the website host (build + Pages). No intermediate content repo.
 - **Primary publish:** Sheet Apps Script → `repository_dispatch` (`rebuild-site`) → build `site/` → publish to **`main` repo root** → Pages from **`main` / `/`**
-- **One PAT only:** `GH_PAT` = **hosting repo owner** fine-grained token, **`owner.github.io` only**, Actions R/W. **Never `DEPLOY_TOKEN`.** (Unrelated to the public template’s owner.)
+- **One PAT only:** `GH_PAT` = **hosting repo owner** fine-grained token, **`owner.github.io` only**, Metadata R + Actions R/W + Contents (Code) R/W. **Never `DEPLOY_TOKEN`.** (Unrelated to the public template’s owner.)
 - CI enforces naming (`owner.github.io`) and Pages (`main` + `/`) via `scripts/check_host_repo.py`
 - Spreadsheet schema + `your website content` tab; dispatch may send inline CSV
 - **Settings tab** (`settings`): `site_title`, `site_tagline`, `image_max_width`, `image_quality` — no `config.json`

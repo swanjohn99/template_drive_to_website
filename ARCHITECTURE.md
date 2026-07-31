@@ -31,7 +31,7 @@ Human steps + Apps Script: [`GOOGLE_SHEETS_SETUP.md`](GOOGLE_SHEETS_SETUP.md) ·
 | Piece | Role |
 |------|------|
 | **`owner.github.io`** (template copied in) | Build scripts + published site root + Pages host |
-| **Apps Script `GH_PAT`** | Fine-grained PAT from the **hosting repo owner**, scoped to that repo only (Actions R/W) |
+| **Apps Script `GH_PAT`** | Fine-grained PAT from the **hosting repo owner**, scoped to that repo only (Metadata R, Actions R/W, Contents/Code R/W) |
 
 ```text
 Editors / uploaders
@@ -66,7 +66,7 @@ Editors / uploaders
 
 | Token | Stored in | Targets | Fine-grained permission |
 |-------|-----------|---------|-------------------------|
-| **`GH_PAT`** | Apps Script Script properties | **Hosting** repo only (`owner/owner.github.io`) | **Actions: Read and write** (+ Metadata R) |
+| **`GH_PAT`** | Apps Script Script properties | **Hosting** repo only (`owner/owner.github.io`) | **Metadata: Read-only**; **Actions: Read and write**; **Contents (Code): Read and write** |
 
 Created by the **owner** of the hosting repo. **No `DEPLOY_TOKEN`.** Never commit PATs. Never use Codespaces secrets for Actions.
 
@@ -157,7 +157,7 @@ Each Drive file: **Anyone with the link → Viewer**.
 
 1. Copy this template into **`owner.github.io`** (or create that repo from the template)
 2. **Settings → Pages → Deploy from a branch → `main` → `/` (root)**
-3. Owner creates fine-grained PAT (Actions R/W on that repo only) → Apps Script `GH_PAT`
+3. Owner creates fine-grained PAT (Metadata R, Actions R/W, Contents/Code R/W on that repo only) → Apps Script `GH_PAT`
 4. Apps Script `GH_REPO` = `https://github.com/owner/owner.github.io`
 
 ## Code map

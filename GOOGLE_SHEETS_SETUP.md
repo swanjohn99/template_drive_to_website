@@ -21,7 +21,7 @@ Copy-paste script: [`google-apps-script/Code.gs`](google-apps-script/Code.gs) ·
 
 | Token | Where | Purpose |
 |-------|-------|---------|
-| **`GH_PAT`** | Apps Script Script properties | Hosting-owner fine-grained PAT — **Actions R/W on `owner.github.io` only** — starts the Action |
+| **`GH_PAT`** | Apps Script Script properties | Hosting-owner fine-grained PAT — **Metadata R + Actions R/W + Contents (Code) R/W on `owner.github.io` only** — starts the Action |
 
 After setup, non-technical owners only edit the Sheet / Drive and click Publish. No GitHub config file. Add a technical contributor on the hosting repo for design/template changes.
 
@@ -90,9 +90,9 @@ Created by the **owner** of `owner.github.io` (unrelated to who owns the public 
 
 | Permission | Access |
 |------------|--------|
-| **Actions** | **Read and write** |
 | **Metadata** | **Read-only** |
-| Contents | Read-only only if dispatch returns 404 without it |
+| **Actions** | **Read and write** |
+| **Contents** (Code) | **Read and write** |
 
 5. Copy once → Apps Script `GH_PAT`
 
@@ -142,7 +142,7 @@ Insert → Drawing → Assign script: `publishWebsite`
 |---------|-----|
 | CI: repo name error | Rename / use `{owner}.github.io` |
 | CI: Pages not enabled / wrong branch | Pages → branch `main`, folder `/` |
-| Apps Script `401`/`403` | New owner fine-grained PAT, Actions R/W on hosting repo only |
+| Apps Script `401`/`403` | New owner fine-grained PAT: Metadata R, Actions R/W, Contents R/W on hosting repo only |
 | Apps Script `404` | `GH_REPO` must be the hosting URL |
 | “Sheet tab not found” | Tab `your website content` or set `CONTENT_SHEET_NAME` |
 | Wrong brand / image size | Edit **`settings`** tab (`site_title`, `site_tagline`, `image_max_width`, `image_quality`) |
